@@ -1,12 +1,26 @@
+"""Assign labels and label positions for FPP polygon groups.
+
+Provide utilities to label polygons by group and piece number,
+and to extract label positions (using centroids).
+"""
+
+from typing import List, Dict, Tuple, Optional
 from shapely.geometry import Polygon
 
 
-def label_groups(groups, group_prefixes=None):
-    """
-    Assign group and piece labels.
+def label_groups(
+    groups: List[List[int]], group_prefixes: Optional[List[str]] = None
+) -> Dict[int, str]:
+    """Assign group and piece labels to polygon indices.
+
+    Args:
+        groups: List of groups, each a list of polygon indices.
+        group_prefixes: Optional list of prefixes for each group.
+
+    Returns:
+        Dict mapping polygon index to label (e.g., 'A1', 'A2', ...).
     """
     if group_prefixes is None:
-        # Default: 'A', 'B', ...
         group_prefixes = [chr(ord("A") + i) for i in range(len(groups))]
     piece_labels = {}
     for group_idx, group in enumerate(groups):
@@ -16,16 +30,39 @@ def label_groups(groups, group_prefixes=None):
     return piece_labels
 
 
-def get_label_positions(polygons, indices=None):
-    """
-    Return {poly_idx: (x, y)} for label position (centroid).
+def get_label_positions(
+    polygons: List[Polygon], indices: Optional[List[int]] = None
+) -> Dict[int, Tuple[float, float]]:
+    """Return label positions as {poly_idx: (x, y)} using centroids.
+
+    Args:
+        polygons: List of Shapely Polygon objects.
+        indices: Optional list of polygon indices to label.
+
+    Returns:
+        Dict mapping polygon index to centroid coordinates (x, y).
     """
     if indices is None:
-        indices = range(len(polygons))
-    return {i: tuple(Polygon(polygons[i]).centroid.coords[0]) for i in indices}
+        indices = list(range(len(polygons)))
+    return {i: polygons[i].centroid.coords[0] for i in indices}
 
 
-def label_polygons(polygons, groups, group_prefixes=None):
+def label_polygons(
+    polygons: List[Polygon],
+    groups: List[List[int]],
+    group_prefixes: Optional[List[str]] = None,
+) -> Tuple[Dict[int, str], Dict[int, Tuple[float, float]]]:
+    """Assign labels and label positions for polygons in groups.
+
+    Args:
+        polygons: List of Shapely Polygon objects.
+        groups: List of groups, each a list of polygon indices.
+        group_prefixes: Optional list of prefixes for each group.
+
+    Returns:
+        piece_labels: Dict of polygon index to label.
+        label_positions: Dict of polygon index to centroid (x, y).
+    """
     piece_labels = label_groups(groups, group_prefixes)
-    label_positions = get_label_positions(polygons, piece_labels.keys())
+    label_positions = get_label_positions(polygons, list(piece_labels.keys()))
     return piece_labels, label_positions

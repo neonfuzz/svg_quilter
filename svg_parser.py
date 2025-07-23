@@ -1,33 +1,34 @@
-from svgpathtools import svg2paths2
+"""Provide a utility to parse SVG files into Shapely LineString objects.
+
+Use svgpathtools to extract only straight line path segments from an
+SVG file, returning them as Shapely LineString objects for geometric
+operations or further processing.
+"""
+
+from typing import List
+from svgpathtools import svg2paths2, Line
 from shapely.geometry import LineString
 
 
-def parse_svg(svg_filename):
+def parse_svg(svg_filename: str) -> List[LineString]:
+    """Parse an SVG file and return a list of Shapely LineString objects.
+
+    Args:
+        svg_filename (str): Path to the SVG file.
+
+    Returns:
+        List[LineString]: Shapely LineString objects representing
+            SVG line segments.
     """
-    Reads all paths from SVG and returns a list of Shapely LineString segments
-    for all straight lines and line-like path segments.
-    """
-    paths, attributes, svg_attr = svg2paths2(svg_filename)
-    shapely_lines = []
-    for path in paths:
-        for segment in path:
-            # Only handle straight lines (Line) segments.
-            if segment.__class__.__name__ == "Line":
-                start = segment.start
-                end = segment.end
-                shapely_lines.append(
-                    LineString([(start.real, start.imag), (end.real, end.imag)])
-                )
-            # Optionally: Approximate curves as lines for quilt patterns
-            # elif segment.__class__.__name__ == "CubicBezier":
-            #     # You could use segment.approximate_arcs_with_quads() or similar, or interpolate
-            #     pass
-    return shapely_lines
-
-
-if __name__ == "__main__":
-    import sys
-
-    lines = parse_svg(sys.argv[1])
-    for i, line in enumerate(lines):
-        print(f"LineString {i+1}: {list(line.coords)}")
+    paths, _, _ = svg2paths2(svg_filename)
+    return [
+        LineString(
+            [
+                (segment.start.real, segment.start.imag),
+                (segment.end.real, segment.end.imag),
+            ]
+        )
+        for path in paths
+        for segment in path
+        if isinstance(segment, Line)
+    ]

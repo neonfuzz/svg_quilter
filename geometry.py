@@ -1,48 +1,29 @@
-import random
+"""Provide utilities for converting Shapely lines to convex hull polygons.
 
-import matplotlib.pyplot as plt
-import numpy as np
+Offer a function to extract convex hull polygons from a list of Shapely
+LineString objects using shapely's polygonize, unary_union, and convex_hull.
+"""
+
+from typing import List
+from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize, unary_union
-from shapely.geometry import LineString
 
 from utils import remove_collinear_points
 
 
-def lines_to_polygons(lines, tol=1e-4):
-    """
-    Given a list of Shapely LineString objects,
-    returns all closed polygons as lists of (x, y) tuples.
+def lines_to_polygons(lines: List[LineString]) -> List[Polygon]:
+    """Convert a list of Shapely LineString objects to convex hull polygons.
+
     Args:
-        lines: list of shapely.geometry.LineString objects
-        tol: coordinate rounding tolerance (default: 0.0001)
+        lines: List of shapely.geometry.LineString objects.
+
     Returns:
-        polygons: list of polygons, each as list of (x, y) tuples
+        List of convex hull polygons as shapely.geometry.Polygon objects.
     """
-    # Combine all lines, splitting at all intersections
     merged = unary_union(lines)
-    polygons = list(polygonize(merged))
-
-    def round_coords(coords):
-        return [(round(x, 4), round(y, 4)) for x, y in coords]
-
-    result = []
-    for poly in polygons:
-        coords = list(poly.exterior.coords)
-        if len(coords) < 4:
-            continue  # Skip degenerate
-        if coords[0] == coords[-1]:
-            coords = coords[:-1]  # Remove duplicate close point
-        result.append(remove_collinear_points(round_coords(coords)))
-    return result
-
-
-# Example usage:
-if __name__ == "__main__":
-    import sys
-    from svg_parser import parse_svg
-
-    lines = parse_svg(sys.argv[1])
-    polys = lines_to_polygons(lines)
-    for i, poly in enumerate(polys):
-        print(f"Polygon {i+1}: {poly}")
-    plot_polygons(polys)
+    polygons = polygonize(merged)
+    return [
+        remove_collinear_points(poly)
+        for poly in polygons
+        if len(poly.exterior.coords) > 3
+    ]

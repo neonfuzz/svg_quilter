@@ -1,25 +1,89 @@
+#!/usr/bin/env python3
+
+"""Main entry point for FPP SVG to PDF/PNG pattern pipeline.
+
+Reads SVG, extracts geometry, groups pieces, labels, adds seam allowances,
+lays out for pages, and outputs both PNG and PDF for printing.
+"""
+
+import argparse
+import os
+
 from svg_parser import parse_svg
 from geometry import lines_to_polygons
-from grouping import group_polygons, save_overall_layout_png
+from grouping import group_polygons
 from labeling import label_polygons
 from seam_allowance import seam_allowance_polygons
 from layout import layout_groups
 from pdf_writer import pdf_writer
-from utils import get_svg_units_per_inch
-
-# ---- Parameters ----
-SVG_FILE = "unit_tests/3groupA.svg"
-PDF_FILE = "out/pieces.pdf"
-PNG_FILE = "out/layout.png"
-PAGE_WIDTH_IN = 8.5
-PAGE_HEIGHT_IN = 11
-SEAM_ALLOWANCE_IN = 0.25
-SVG_UNITS_PER_IN = get_svg_units_per_inch(SVG_FILE)
+from utils import get_svg_units_per_inch, save_overall_layout_png
 
 
-def main():
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments for main pipeline."""
+    parser = argparse.ArgumentParser(
+        description="FPP SVG to PDF/PNG pattern generator",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("svg_file", type=str, help="Input SVG file")
+    parser.add_argument(
+        "--pdf",
+        dest="pdf_file",
+        type=str,
+        default="out/pieces.pdf",
+        help="Output PDF file",
+    )
+    parser.add_argument(
+        "--png",
+        dest="png_file",
+        type=str,
+        default="out/layout.png",
+        help="Output PNG layout file",
+    )
+    parser.add_argument(
+        "--page-width",
+        dest="page_width_in",
+        type=float,
+        default=8.5,
+        help="PDF page width in inches",
+    )
+    parser.add_argument(
+        "--page-height",
+        dest="page_height_in",
+        type=float,
+        default=11.0,
+        help="PDF page height in inches",
+    )
+    parser.add_argument(
+        "--seam-allowance",
+        dest="seam_allowance_in",
+        type=float,
+        default=0.25,
+        help="Seam allowance in inches",
+    )
+    parser.add_argument(
+        "--margin",
+        dest="margin_in",
+        type=float,
+        default=0.5,
+        help="Page margin in inches",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Run the full pipeline from SVG to PDF/PNG pattern."""
+    args = parse_args()
+
+    if not os.path.exists(args.svg_file):
+        raise FileNotFoundError(f"SVG file not found: {args.svg_file}")
+    os.makedirs(os.path.dirname(args.pdf_file), exist_ok=True)
+    os.makedirs(os.path.dirname(args.png_file), exist_ok=True)
+
+    svg_units_per_in = get_svg_units_per_inch(args.svg_file)
+
     # Parse SVG to lines
-    lines = parse_svg(SVG_FILE)
+    lines = parse_svg(args.svg_file)
 
     # Geometry: lines to polygons
     polygons = lines_to_polygons(lines)
@@ -34,41 +98,45 @@ def main():
     seam_allowances = seam_allowance_polygons(
         polygons,
         groups,
-        allowance_in_inches=SEAM_ALLOWANCE_IN,
-        svg_units_per_inch=SVG_UNITS_PER_IN,
+        allowance_in_inches=args.seam_allowance_in,
+        svg_units_per_inch=svg_units_per_in,
     )
 
     # Layout
     pages = layout_groups(
         seam_allowances,
-        PAGE_WIDTH_IN,
-        PAGE_HEIGHT_IN,
-        margin_in=0.25,
-        svg_units_per_in=SVG_UNITS_PER_IN,
+        args.page_width_in,
+        args.page_height_in,
+        margin_in=args.margin_in,
+        svg_units_per_in=svg_units_per_in,
     )
 
-    # Layout export
+    # Layout export (PNG)
     save_overall_layout_png(
         polygons,
         piece_labels,
         label_positions,
-        PNG_FILE,
+        args.png_file,
         groups=groups,
     )
 
     # PDF export
     pdf_writer(
-        PDF_FILE,
+        args.pdf_file,
         pages,
         seam_allowances,
         polygons,
         groups,
         piece_labels,
         label_positions,
-        page_width_in=PAGE_WIDTH_IN,
-        page_height_in=PAGE_HEIGHT_IN,
-        svg_units_per_in=SVG_UNITS_PER_IN,
+        page_width_in=args.page_width_in,
+        page_height_in=args.page_height_in,
+        svg_units_per_in=svg_units_per_in,
     )
+
+    print("Done! Output written to:")
+    print(f" - {args.pdf_file}")
+    print(f" - {args.png_file}")
 
 
 if __name__ == "__main__":

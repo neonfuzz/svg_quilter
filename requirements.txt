@@ -1,0 +1,4 @@
+shapely
+svgpathtools
+matplotlib
+reportlab

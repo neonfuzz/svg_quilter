@@ -72,10 +72,10 @@ def find_exact_full_shared_edge(
     n2 = len(coords2)
 
     matches = 0
-    for i in range(n1):
-        a1, a2 = coords1[i], coords1[(i + 1) % n1]
-        for j in range(n2):
-            b1, b2 = coords2[j], coords2[(j + 1) % n2]
+    for i in range(n1-1):
+        a1, a2 = coords1[i], coords1[i + 1]
+        for j in range(n2-1):
+            b1, b2 = coords2[j], coords2[j + 1]
             if (coords_equal(a1, b2, tol) and coords_equal(a2, b1, tol)) or (
                 coords_equal(a1, b1, tol) and coords_equal(a2, b2, tol)
             ):
@@ -118,8 +118,7 @@ def grow_group_from_seed(
             match = find_exact_full_shared_edge(neighbor_poly, current_shape, tol)
             if match:
                 current_shape = current_shape.union(neighbor_poly)
-                current_shape = remove_collinear_points(current_shape)
-                #  current_shape = current_shape.convex_hull.simplify(tol).buffer(0)
+                current_shape = remove_collinear_points(current_shape.convex_hull)
                 group_idxs.append(neighbor)
                 grouped.add(neighbor)
                 found = True

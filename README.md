@@ -72,6 +72,8 @@ Run `python main.py --help` for full usage details.
 
     reportlab — for PDF output
 
+    rectpack - for packing/packing algorithm
+
 ---
 
 ## SVG Guidelines

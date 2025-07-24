@@ -5,41 +5,10 @@ using translation and rotation to fit within printable areas.
 """
 
 from typing import Dict, List, Any
-import matplotlib.pyplot as plt
-from shapely.affinity import translate, rotate
+
+from rectpack import newPacker
+from shapely.affinity import rotate as shapely_rotate
 from shapely.geometry import Polygon
-
-
-def apply_transform(
-    geom: Polygon, rotation: float = 0, dx: float = 0, dy: float = 0
-) -> Polygon:
-    """Apply rotation and translation to a geometry.
-
-    Args:
-        geom: Shapely Polygon object.
-        rotation: Rotation angle in degrees.
-        dx: X translation.
-        dy: Y translation.
-
-    Returns:
-        Transformed Polygon.
-    """
-    if rotation != 0:
-        geom = rotate(geom, rotation, origin="centroid")
-    return translate(geom, dx, dy)
-
-
-def get_polygon_bounds(polygon: Polygon) -> (float, float):
-    """Return (width, height) of polygon's bounding box.
-
-    Args:
-        polygon: Shapely Polygon object.
-
-    Returns:
-        Tuple (width, height).
-    """
-    minx, miny, maxx, maxy = polygon.bounds
-    return maxx - minx, maxy - miny
 
 
 def layout_groups(
@@ -47,74 +16,70 @@ def layout_groups(
     page_width_in: float,
     page_height_in: float,
     margin_in: float = 0.5,
+    margin_between: float = 0.1,
     svg_units_per_in: float = 96,
     allow_rotate: bool = True,
 ) -> List[List[Dict[str, Any]]]:
-    """Arrange seam allowance polygons on pages with margins.
+    """Arrange seam allowance polygons using rectpack for tight packing.
 
     Args:
-        seam_allowances: Dict {group_idx: seam_allowance Polygon}.
+        seam_allowances: Dict {group_idx: Polygon} for each group.
         page_width_in: Page width in inches.
         page_height_in: Page height in inches.
-        margin_in: Margin size in inches.
+        margin_in: Page margin in inches.
+        margin_in: Margin between shapes in inches.
         svg_units_per_in: SVG units per inch.
-        allow_rotate: Whether to rotate shapes to fit.
+        allow_rotate: Allow 90-degree rotation for packing.
 
     Returns:
-        List of pages, each a list of placement dicts with keys:
-        group_idx, rotation, dx, dy.
+        List of pages, each a list of placement dicts for each group.
     """
-    page_width = page_width_in * svg_units_per_in
-    page_height = page_height_in * svg_units_per_in
+    inner_width = (page_width_in - 2 * margin_in) * svg_units_per_in
+    inner_height = (page_height_in - 2 * margin_in) * svg_units_per_in
     margin = margin_in * svg_units_per_in
+    grow = (margin_between / 2) * svg_units_per_in
 
-    placed = set()
+    packer = newPacker(rotation=allow_rotate)
+    rectangles = []
+    # Add each polygon's bounding box as a rectangle to the packer
+    for group_idx, poly in seam_allowances.items():
+        minx, miny, maxx, maxy = poly.bounds
+        w = maxx - minx + 2*grow
+        h = maxy - miny + 2*grow
+        packer.add_rect(w, h, group_idx)
+        rectangles.append((group_idx, w, h, minx, miny))
+
+    # Add a bin (page) of inner dimensions (many bins allowed)
+    packer.add_bin(inner_width, inner_height, float("inf"))
+    packer.pack()
+
     pages = []
-    group_items = list(seam_allowances.items())
-    group_items.sort(key=lambda item: -item[1].area)
-
-    while len(placed) < len(group_items):
+    for abin in packer:
         page_placements = []
-        x, y = margin, margin
-        max_row_height = 0
-        for group_idx, poly in group_items:
-            if group_idx in placed:
-                continue
-            pw, ph = get_polygon_bounds(poly)
-            fits_normal = (x + pw + margin <= page_width) and (
-                y + ph + margin <= page_height
+        for rect in abin:
+            group_idx = rect.rid
+            x, y = rect.x, rect.y
+            w, h = rect.width, rect.height
+            orig = next(r for r in rectangles if r[0] == group_idx)
+            orig_w, orig_h = orig[1], orig[2]
+            minx, miny = orig[3], orig[4]
+            # Rotation detection: rectpack swaps w/h if rotated
+            rotation = 90 if allow_rotate and ((w, h) != (orig_w, orig_h)) else 0
+            if rotation == 90:
+                poly = seam_allowances[group_idx]
+                poly = shapely_rotate(poly, 90, origin="centroid")
+                minx, miny, _, _ = poly.bounds
+            dx = x + grow + margin - minx
+            dy = y + grow + margin - miny
+
+            page_placements.append(
+                {
+                    "group_idx": group_idx,
+                    "rotation": rotation,
+                    "dx": dx,
+                    "dy": dy,
+                }
             )
-            fits_rot = (
-                allow_rotate
-                and (x + ph + margin <= page_width)
-                and (y + pw + margin <= page_height)
-            )
-            if fits_normal or fits_rot:
-                rotation = 0
-                if fits_rot and ph > pw:
-                    rotation = 90
-                    pw, ph = ph, pw
-                minx, miny, _, _ = rotate(poly, rotation, origin="centroid").bounds
-                dx, dy = x - minx, y - miny
-                page_placements.append(
-                    {
-                        "group_idx": group_idx,
-                        "rotation": rotation,
-                        "dx": dx,
-                        "dy": dy,
-                    }
-                )
-                placed.add(group_idx)
-                x += pw + margin
-                max_row_height = max(max_row_height, ph)
-                if x + pw + margin > page_width:
-                    x = margin
-                    y += max_row_height + margin
-                    max_row_height = 0
-        if not page_placements:
-            raise ValueError(
-                "A group does not fit on the page! "
-                "Increase page size or decrease margin."
-            )
-        pages.append(page_placements)
+        if page_placements:
+            pages.append(page_placements)
     return pages

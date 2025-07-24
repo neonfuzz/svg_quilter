@@ -2,3 +2,4 @@ shapely
 svgpathtools
 matplotlib
 reportlab
+rectpack

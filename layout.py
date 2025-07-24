@@ -11,6 +11,31 @@ from shapely.affinity import rotate as shapely_rotate
 from shapely.geometry import Polygon
 
 
+def minimal_bounding_box_rotation(poly: Polygon, step: int = 5) -> (Polygon, float):
+    """Rotate a polygon to minimize its bounding box area.
+
+    Args:
+        poly (Polygon): The input polygon.
+        step (int, optional): The angle step for rotation. Defaults to 5.
+
+    Returns:
+        Tuple[Polygon, float]: A tuple containing the rotated polygon and
+            the best angle of rotation.
+    """
+    min_area = float("inf")
+    best_angle = 0
+    best_poly = poly
+    for angle in range(0, 180, step):
+        rotated = shapely_rotate(poly, angle, origin="centroid", use_radians=False)
+        minx, miny, maxx, maxy = rotated.bounds
+        area = (maxx - minx) * (maxy - miny)
+        if area < min_area:
+            min_area = area
+            best_angle = angle
+            best_poly = rotated
+    return best_poly, best_angle
+
+
 def layout_groups(
     seam_allowances: Dict[int, Polygon],
     page_width_in: float,
@@ -44,9 +69,13 @@ def layout_groups(
 
     packer = newPacker(rotation=allow_rotate)
     rectangles = []
+    rotated_polys = {}
+
     # Add each polygon's bounding box as a rectangle to the packer
     for group_idx, poly in seam_allowances.items():
-        minx, miny, maxx, maxy = poly.bounds
+        best_poly, pre_rot_angle = minimal_bounding_box_rotation(poly)
+        rotated_polys[group_idx] = (best_poly, pre_rot_angle)
+        minx, miny, maxx, maxy = best_poly.bounds
         w = maxx - minx + 2 * grow
         h = maxy - miny + 2 * grow
         packer.add_rect(w, h, group_idx)
@@ -56,11 +85,7 @@ def layout_groups(
     packer.add_bin(inner_width, inner_height, float("inf"))
     packer.pack()
 
-    packed_ids = set()
-    for abin in packer:
-        for rect in abin:
-            packed_ids.add(rect.rid)
-
+    packed_ids = {rect.rid for abin in packer for rect in abin}
     unpacked_ids = set(seam_allowances.keys()) - packed_ids
     if unpacked_ids:
         failed = ", ".join(str(i) for i in sorted(unpacked_ids))
@@ -77,25 +102,29 @@ def layout_groups(
             x, y = rect.x, rect.y
             w, h = rect.width, rect.height
             orig = next(r for r in rectangles if r[0] == group_idx)
-            orig_w, orig_h = orig[1], orig[2]
-            minx, miny = orig[3], orig[4]
+            orig_w, orig_h, minx, miny = orig[1], orig[2], orig[3], orig[4]
             # Rotation detection: rectpack swaps w/h if rotated
-            rotation = 90 if allow_rotate and ((w, h) != (orig_w, orig_h)) else 0
-            if rotation == 90:
-                poly = seam_allowances[group_idx]
-                poly = shapely_rotate(poly, 90, origin="centroid")
-                minx, miny, _, _ = poly.bounds
+            rectpack_rot = 90 if allow_rotate and ((w, h) != (orig_w, orig_h)) else 0
+
+            rotated_poly, pre_rot_angle = rotated_polys[group_idx]
+            if rectpack_rot == 90:
+                rotated_poly = shapely_rotate(
+                    rotated_poly, 90, origin="centroid", use_radians=False
+                )
+                minx, miny, _, _ = rotated_poly.bounds
+
             dx = x + grow + margin - minx
             dy = y + grow + margin - miny
 
             page_placements.append(
                 {
                     "group_idx": group_idx,
-                    "rotation": rotation,
+                    "rotation": (pre_rot_angle + rectpack_rot) % 360,
                     "dx": dx,
                     "dy": dy,
                 }
             )
         if page_placements:
             pages.append(page_placements)
+
     return pages

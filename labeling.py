@@ -8,6 +8,22 @@ from typing import List, Dict, Tuple, Optional
 from shapely.geometry import Polygon
 
 
+def int_to_label(n: int) -> str:
+    """Convert an integer to a label using the A1 notation.
+
+    Args:
+        n: The integer to convert.
+
+    Returns:
+        A string representing the label.
+    """
+    label = ""
+    while n >= 0:
+        label = chr(n % 26 + 65) + label
+        n = n // 26 - 1
+    return label
+
+
 def label_groups(
     groups: List[List[int]], group_prefixes: Optional[List[str]] = None
 ) -> Dict[int, str]:
@@ -21,7 +37,7 @@ def label_groups(
         Dict mapping polygon index to label (e.g., 'A1', 'A2', ...).
     """
     if group_prefixes is None:
-        group_prefixes = [chr(ord("A") + i) for i in range(len(groups))]
+        group_prefixes = [int_to_label(i) for i in range(len(groups))]
     piece_labels = {}
     for group_idx, group in enumerate(groups):
         prefix = group_prefixes[group_idx]

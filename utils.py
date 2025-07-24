@@ -19,125 +19,6 @@ UNIT_TO_INCH = {
 }
 
 
-def get_distinct_colors(
-    n: int, pastel: bool = True
-) -> List[Tuple[float, float, float]]:
-    """Generate n visually distinct RGB colors.
-
-    Args:
-        n: Number of colors to generate.
-        pastel: If True, use pastel palette.
-
-    Returns:
-        List of RGB tuples (r, g, b), values in [0, 1].
-    """
-    hues = [i / n for i in range(n)]
-    random.shuffle(hues)
-    colors = []
-    for h in hues:
-        s = 0.5 if pastel else 0.85
-        v = 0.85 if pastel else 0.9
-        rgb = colorsys.hsv_to_rgb(h, s, v)
-        colors.append(rgb)
-    return colors
-
-
-def save_overall_layout_png(
-    polygons: List[Polygon],
-    piece_labels: Dict[int, str],
-    label_positions: Dict[int, Tuple[float, float]],
-    out_png: str = "overall_layout.png",
-    dpi: int = 300,
-    groups: Optional[List[List[int]]] = None,
-    figsize: Tuple[int, int] = (8, 10),
-) -> None:
-    """Render and save a PNG with all polygons and labels at SVG positions.
-
-    Args:
-        polygons: List of Shapely Polygon objects.
-        piece_labels: Dict mapping polygon index to label.
-        label_positions: Dict mapping polygon index to (x, y) label position.
-        out_png: Output PNG filename.
-        dpi: Dots per inch for the saved PNG.
-        groups: List of groups, each a list of polygon indices.
-        figsize: Figure size (width, height) in inches.
-    """
-    plt.figure(figsize=figsize, dpi=dpi)
-    ax = plt.gca()
-    n_polys = len(polygons)
-    poly_colors: Dict[int, Tuple[float, float, float]] = {}
-
-    if groups is not None:
-        group_count = len(groups)
-        group_colors = get_distinct_colors(group_count, pastel=True)
-        for gi, group in enumerate(groups):
-            for pi in group:
-                poly_colors[pi] = group_colors[gi]
-    else:
-        poly_colors = {i: (0.7, 0.7, 0.95) for i in range(n_polys)}
-
-    for idx, poly in enumerate(polygons):
-        color = poly_colors.get(idx, (0.7, 0.7, 0.95))
-        xs, ys = poly.exterior.xy
-        ax.fill(xs, ys, color=color, alpha=0.85, linewidth=1, edgecolor="k", zorder=2)
-
-    for idx, label in piece_labels.items():
-        x, y = label_positions[idx]
-        plt.text(
-            x,
-            y,
-            label,
-            ha="center",
-            va="center",
-            fontsize=16,
-            fontweight="bold",
-            bbox={"facecolor": "white", "alpha": 0.7, "boxstyle": "round,pad=0.2"},
-            zorder=3,
-        )
-
-    plt.axis("equal")
-    plt.axis("off")
-    plt.title("FPP Pattern: All Pieces & Labels (Right side)")
-    plt.tight_layout()
-    plt.gca().invert_yaxis()
-    plt.savefig(out_png, bbox_inches="tight", pad_inches=0.1, dpi=dpi)
-    plt.close()
-
-
-def plot_groups(polygons: List[Polygon], groups: List[List[int]]) -> None:
-    """Plot groups of polygons, colored by group.
-
-    Args:
-        polygons: List of Shapely Polygon objects.
-        groups: List of groups, each a list of polygon indices.
-    """
-    plt.figure(figsize=(8, 8))
-    color_choices = [
-        (random.random(), random.random(), random.random()) for _ in range(len(groups))
-    ]
-    for group_idx, group in enumerate(groups):
-        color = color_choices[group_idx]
-        for poly_idx in group:
-            poly = polygons[poly_idx]
-            xs, ys = poly.exterior.xy
-            plt.fill(xs, ys, alpha=0.5, color=color)
-            centroid = poly.centroid
-            plt.text(
-                centroid.x,
-                centroid.y,
-                f"{group_idx+1}.{group.index(poly_idx)+1}",
-                ha="center",
-                va="center",
-                fontsize=12,
-                fontweight="bold",
-            )
-    plt.axis("equal")
-    plt.axis("off")
-    plt.title("FPP Groups (Each color = one group)")
-    plt.gca().invert_yaxis()
-    plt.show()
-
-
 def parse_length(length_str: str) -> float:
     """Parse a length string and return the value in inches.
 
@@ -222,6 +103,61 @@ def remove_collinear_points(poly: Polygon, tol: float = 1e-2) -> Polygon:
     return Polygon(result)
 
 
+def get_distinct_colors(
+    n: int, pastel: bool = True
+) -> List[Tuple[float, float, float]]:
+    """Generate n visually distinct RGB colors.
+
+    Args:
+        n: Number of colors to generate.
+        pastel: If True, use pastel palette.
+
+    Returns:
+        List of RGB tuples (r, g, b), values in [0, 1].
+    """
+    hues = [i / n for i in range(n)]
+    random.shuffle(hues)
+    colors = []
+    for h in hues:
+        s = 0.5 if pastel else 0.85
+        v = 0.85 if pastel else 0.9
+        rgb = colorsys.hsv_to_rgb(h, s, v)
+        colors.append(rgb)
+    return colors
+
+
+def plot_groups(polygons: List[Polygon], groups: List[List[int]]) -> None:
+    """Plot groups of polygons, colored by group.
+
+    Args:
+        polygons: List of Shapely Polygon objects.
+        groups: List of groups, each a list of polygon indices.
+    """
+    plt.figure(figsize=(8, 8))
+    color_choices = get_distinct_colors(len(groups))
+    for group_idx, group in enumerate(groups):
+        color = color_choices[group_idx]
+        for poly_idx in group:
+            poly = polygons[poly_idx]
+            xs, ys = poly.exterior.xy
+            plt.fill(xs, ys, alpha=0.5, color=color)
+            centroid = poly.centroid
+            plt.text(
+                centroid.x,
+                centroid.y,
+                f"{group_idx+1}.{group.index(poly_idx)+1}",
+                ha="center",
+                va="center",
+                fontsize=12,
+                fontweight="bold",
+            )
+    plt.axis("equal")
+    plt.axis("off")
+    plt.title("FPP Groups (Each color = one group)")
+    plt.gca().invert_yaxis()
+    plt.show()
+
+
 def plot_polygons(polygons: List[Polygon], show_labels: bool = True) -> None:
     """Plot polygons with optional labels at centroid.
 
@@ -230,9 +166,10 @@ def plot_polygons(polygons: List[Polygon], show_labels: bool = True) -> None:
         show_labels: Whether to label polygons by index.
     """
     plt.figure(figsize=(8, 8))
+    colors = get_distinct_colors(len(polygons))
     for idx, poly in enumerate(polygons):
         xs, ys = poly.exterior.xy
-        color = (random.random(), random.random(), random.random())
+        color = colors[idx]
         plt.fill(xs, ys, alpha=0.5, color=color, edgecolor="k", linewidth=1)
         if show_labels:
             c = poly.centroid
@@ -269,7 +206,7 @@ def plot_groups_with_seam_allowance(
     """
     plt.figure(figsize=(8, 8))
     random.seed(42)
-    colors = [(random.random(), random.random(), random.random()) for _ in groups]
+    colors = get_distinct_colors(len(groups))
     for group_idx, group in enumerate(groups):
         seam_poly = seam_allowances[group_idx]
         xs, ys = seam_poly.exterior.xy

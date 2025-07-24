@@ -16,7 +16,8 @@ from labeling import label_polygons
 from seam_allowance import seam_allowance_polygons
 from layout import layout_groups
 from pdf_writer import pdf_writer
-from utils import get_svg_units_per_inch, save_overall_layout_png
+from png_writer import save_overall_layout_png
+from utils import get_svg_units_per_inch
 
 
 def parse_args() -> argparse.Namespace:

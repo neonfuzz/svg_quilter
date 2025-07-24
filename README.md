@@ -78,13 +78,17 @@ Run `python main.py --help` for full usage details.
 
 ## SVG Guidelines
 
-    Use simple SVGs: closed paths/lines for your desired shapes.
+    Use simple SVGs: all lines must be straight paths; no rects, no shapes, no curves.
 
     Each "patch" must be a closed shape made of lines or polylines.
 
     All paths must be in the same SVG file.
 
     Use Inkscape or similar to prepare SVGs.
+
+    When drawing intersecting seams, use snapping for best results. "Eyeballing" may lead to extraneous small shapes.
+
+    Known bug: the "seed" patch for a group is the smallest patch within the group. This is not always a desired behavior. Workaround: If you need to force a particular patch to be the seed patch, add an extra seam to make a small patch. You can then "whiteout" this seam manually.
 
 ---
 
@@ -106,9 +110,9 @@ utils.py
 
     Seam allowance and page size are fully customizable.
 
-    For best results, ensure shapes align perfectly in your SVG.
+    For best results, ensure shapes align perfectly in your SVG. Use snapping when possible.
 
-    If you see unexpected grouping, check for tiny gaps or misalignments.
+    If you see unexpected groupings, check for tiny gaps or misalignments.
 
 ## License
 

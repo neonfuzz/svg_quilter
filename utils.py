@@ -1,11 +1,22 @@
 """General utilities for coloring, plotting, SVG parsing, and polygon cleanup."""
 
+import re
 from typing import List, Dict, Tuple, Optional
 import random
 import colorsys
 import xml.etree.ElementTree as ET
+
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
+
+UNIT_TO_INCH = {
+    "in": 1.0,
+    "mm": 1.0 / 25.4,
+    "cm": 1.0 / 2.54,
+    "pt": 1.0 / 72.0,
+    "pc": 1.0 / 6.0,
+    "px": 1.0 / 96.0,
+}
 
 
 def get_distinct_colors(
@@ -127,30 +138,51 @@ def plot_groups(polygons: List[Polygon], groups: List[List[int]]) -> None:
     plt.show()
 
 
-def get_svg_units_per_inch(svg_file: str) -> float:
-    """Estimate SVG units per inch from SVG width or viewBox.
+def parse_length(length_str: str) -> float:
+    """Parse a length string and return the value in inches.
 
     Args:
-        svg_file: Path to SVG file.
+        length_str: A string representing a length, e.g., "10cm" or "5in".
 
     Returns:
-        Units per inch (typically 96 for SVG).
+        The length converted to inches as a float.
     """
-    #  tree = ET.parse(svg_file)
-    #  root = tree.getroot()
-    #  width = root.attrib.get("width", "")
-    #  if "in" in width:
-    #      return 1.0
-    #  if "mm" in width:
-    #      return 25.4
-    #  view_box = root.attrib.get("view_box", "")
-    #  if view_box:
-    #      vb_w = float(view_box.split()[2])
-    #      if abs(vb_w - 8.5) < 0.1:
-    #          return 1.0
-    #      if abs(vb_w - 215.9) < 0.5:  # 8.5in in mm
-    #          return 25.4
-    return 96.0
+    match = re.fullmatch(r"([\d.]+)([a-z%]*)", length_str.strip())
+    if not match:
+        raise ValueError(f"Invalid length: {length_str}")
+    value, unit = match.groups()
+    unit = unit or "px"
+    if unit not in UNIT_TO_INCH:
+        raise ValueError(f"Unsupported unit: {unit}")
+    return float(value) * UNIT_TO_INCH[unit]
+
+
+def get_svg_units_per_inch(svg_path: str) -> Optional[float]:
+    """Get the number of SVG units per inch from an SVG file.
+
+    Args:
+        svg_path: The path to the SVG file.
+
+    Returns:
+        The number of SVG units per inch as a float, or None if not found.
+    """
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+
+    width_str = root.get("width")
+    viewbox_str = root.get("viewBox")
+
+    if not width_str or not viewbox_str:
+        raise ValueError("SVG must have 'width' and 'viewBox' attributes")
+
+    width_in_inches = parse_length(width_str)
+    viewbox_values = viewbox_str.strip().split()
+    if len(viewbox_values) != 4:
+        raise ValueError("Invalid viewBox format")
+
+    viewbox_width = float(viewbox_values[2])
+
+    return viewbox_width / width_in_inches
 
 
 def remove_collinear_points(poly: Polygon, tol: float = 1e-2) -> Polygon:

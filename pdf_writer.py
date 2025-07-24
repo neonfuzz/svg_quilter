@@ -148,7 +148,7 @@ def pdf_writer(
                 fill_color=gray,
                 stroke_color=gray,
                 alpha=1.0,
-                linewidth=3,
+                linewidth=0,
             )
 
             # Draw polygons and labels (transformed positions)

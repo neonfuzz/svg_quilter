@@ -105,7 +105,7 @@ def pdf_writer(
     page_width_in: float = 8.5,
     page_height_in: float = 11,
     svg_units_per_in: float = 96,
-    label_fontsize: int = 18,
+    label_fontsize: int = 12,
 ) -> None:
     """Write seam allowance layouts and labels to PDF pages.
 

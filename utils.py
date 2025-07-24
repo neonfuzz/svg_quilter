@@ -136,20 +136,20 @@ def get_svg_units_per_inch(svg_file: str) -> float:
     Returns:
         Units per inch (typically 96 for SVG).
     """
-    tree = ET.parse(svg_file)
-    root = tree.getroot()
-    width = root.attrib.get("width", "")
-    if "in" in width:
-        return 1.0
-    if "mm" in width:
-        return 25.4
-    view_box = root.attrib.get("view_box", "")
-    if view_box:
-        vb_w = float(view_box.split()[2])
-        if abs(vb_w - 8.5) < 0.1:
-            return 1.0
-        if abs(vb_w - 215.9) < 0.5:  # 8.5in in mm
-            return 25.4
+    #  tree = ET.parse(svg_file)
+    #  root = tree.getroot()
+    #  width = root.attrib.get("width", "")
+    #  if "in" in width:
+    #      return 1.0
+    #  if "mm" in width:
+    #      return 25.4
+    #  view_box = root.attrib.get("view_box", "")
+    #  if view_box:
+    #      vb_w = float(view_box.split()[2])
+    #      if abs(vb_w - 8.5) < 0.1:
+    #          return 1.0
+    #      if abs(vb_w - 215.9) < 0.5:  # 8.5in in mm
+    #          return 25.4
     return 96.0
 
 

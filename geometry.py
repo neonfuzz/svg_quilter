@@ -14,7 +14,7 @@ from utils import remove_collinear_points
 def lines_to_polygons(
     lines: List[LineString],
     snap_tol: float = 1e-3,
-    min_area: float = 1e-6,
+    min_area: float = 1e-1,
 ) -> List[Polygon]:
     """Convert list of LineString objects to polygons, snapping endpoints.
 

@@ -27,12 +27,15 @@ def layout_groups(
         page_width_in: Page width in inches.
         page_height_in: Page height in inches.
         margin_in: Page margin in inches.
-        margin_in: Margin between shapes in inches.
+        margin_between: Margin between shapes in inches.
         svg_units_per_in: SVG units per inch.
         allow_rotate: Allow 90-degree rotation for packing.
 
     Returns:
         List of pages, each a list of placement dicts for each group.
+
+    Raises:
+        ValueError: If any group fails to pack.
     """
     inner_width = (page_width_in - 2 * margin_in) * svg_units_per_in
     inner_height = (page_height_in - 2 * margin_in) * svg_units_per_in
@@ -44,14 +47,27 @@ def layout_groups(
     # Add each polygon's bounding box as a rectangle to the packer
     for group_idx, poly in seam_allowances.items():
         minx, miny, maxx, maxy = poly.bounds
-        w = maxx - minx + 2*grow
-        h = maxy - miny + 2*grow
+        w = maxx - minx + 2 * grow
+        h = maxy - miny + 2 * grow
         packer.add_rect(w, h, group_idx)
         rectangles.append((group_idx, w, h, minx, miny))
 
     # Add a bin (page) of inner dimensions (many bins allowed)
     packer.add_bin(inner_width, inner_height, float("inf"))
     packer.pack()
+
+    packed_ids = set()
+    for abin in packer:
+        for rect in abin:
+            packed_ids.add(rect.rid)
+
+    unpacked_ids = set(seam_allowances.keys()) - packed_ids
+    if unpacked_ids:
+        failed = ", ".join(str(i) for i in sorted(unpacked_ids))
+        raise ValueError(
+            f"Packing failed for group(s): {failed}. "
+            "They may be too large for the page dimensions."
+        )
 
     pages = []
     for abin in packer:

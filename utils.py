@@ -97,7 +97,7 @@ def save_overall_layout_png(
 
     plt.axis("equal")
     plt.axis("off")
-    plt.title("FPP Pattern: All Pieces & Labels")
+    plt.title("FPP Pattern: All Pieces & Labels (Right side)")
     plt.tight_layout()
     plt.gca().invert_yaxis()
     plt.savefig(out_png, bbox_inches="tight", pad_inches=0.1, dpi=dpi)

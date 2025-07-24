@@ -12,6 +12,7 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 - **Flexible Layout:** Efficiently arranges groups onto printable PDF pages.
 - **Visualization:** Outputs a labeled PNG layout preview for quick checks.
 - **Easy Labeling:** Groups and pieces are automatically labeled and placed.
+- **Automatic Flipping:** Printed pieces are automatically flipped, so you're working with the wrong side of the fabric.
 
 ---
 
@@ -87,6 +88,8 @@ Run `python main.py --help` for full usage details.
     Use Inkscape or similar to prepare SVGs.
 
     When drawing intersecting seams, use snapping for best results. "Eyeballing" may lead to extraneous small shapes.
+
+    The piecing pdf is automatically flipped, so you don't need to flip the diagram yourself.
 
     Known bug: the "seed" patch for a group is the smallest patch within the group. This is not always a desired behavior. Workaround: If you need to force a particular patch to be the seed patch, add an extra seam to make a small patch. You can then "whiteout" this seam manually.
 

@@ -18,6 +18,8 @@ from layout import layout_groups
         "3groupA.svg",
         "3groupB.svg",
         "2converging.svg",
+        "1big_seed.svg",
+        "2big_seed.svg",
     ],
 )
 def test_full_pipeline_on_svg(filename):
@@ -36,7 +38,7 @@ def test_full_pipeline_on_svg(filename):
 
     # Step 3: Group Polygons
     ngroups = int(filename[0])
-    groups = group_polygons(polygons)
+    groups = group_polygons(polygons, lines)
     assert len(groups) == ngroups
     assert isinstance(groups, list)
     assert sum(len(g) for g in groups) == len(polygons)

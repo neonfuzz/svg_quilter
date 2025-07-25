@@ -8,7 +8,7 @@ from typing import List
 from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize, unary_union
 
-from utils import remove_collinear_points
+from utils import collinear, remove_collinear_points
 
 
 def lines_to_polygons(

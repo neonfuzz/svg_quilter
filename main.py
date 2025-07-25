@@ -94,7 +94,7 @@ def main() -> None:
     polygons = lines_to_polygons(lines)
 
     # Grouping
-    groups = group_polygons(polygons)
+    groups = group_polygons(polygons, lines)
 
     # Labeling
     piece_labels, label_positions = label_polygons(polygons, groups)

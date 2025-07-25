@@ -66,6 +66,30 @@ def get_svg_units_per_inch(svg_path: str) -> Optional[float]:
     return viewbox_width / width_in_inches
 
 
+def collinear(
+    a: Tuple[float, float],
+    b: Tuple[float, float],
+    c: Tuple[float, float],
+    tol: float = 1e-2,
+) -> bool:
+    """Determine if three points are collinear.
+
+    Args:
+        a: First point as a tuple of (x, y).
+        b: Second point as a tuple of (x, y).
+        c: Third point as a tuple of (x, y).
+        tol: Tolerance for considering the points to be collinear.
+
+    Returns:
+        True if the points are collinear within the given tolerance, False otherwise.
+    """
+    ax, ay = a
+    bx, by = b
+    cx, cy = c
+    area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    return abs(area) < tol
+
+
 def remove_collinear_points(poly: Polygon, tol: float = 1e-2) -> Polygon:
     """Remove all intermediate collinear points from a closed polygon ring.
 
@@ -84,19 +108,12 @@ def remove_collinear_points(poly: Polygon, tol: float = 1e-2) -> Polygon:
     if n <= 3:
         return Polygon(coords)
 
-    def collinear(a, b, c):
-        ax, ay = a
-        bx, by = b
-        cx, cy = c
-        area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
-        return abs(area) < tol
-
     result = []
     for i in range(n):
         prev = coords[i - 1]
         curr = coords[i]
         nxt = coords[(i + 1) % n]
-        if not collinear(prev, curr, nxt):
+        if not collinear(prev, curr, nxt, tol):
             result.append(curr)
     if closed:
         result.append(result[0])

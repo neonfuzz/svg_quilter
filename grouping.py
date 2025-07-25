@@ -1,5 +1,7 @@
 """Group Shapely Polygon objects by shared edges for FPP-style quilt patterns.
 
+Uses seam order logic for correct seed selection.
+
 Provide utilities for grouping, coloring, and visualizing Shapely
 Polygon objects, along with geometric adjacency and grouping logic.
 """
@@ -7,9 +9,10 @@ Polygon objects, along with geometric adjacency and grouping logic.
 from typing import List, Dict, Set
 
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, LineString, box
+from shapely.ops import unary_union
 
-from utils import remove_collinear_points
+from utils import collinear, remove_collinear_points
 
 
 def polygon_area(poly: Polygon) -> float:
@@ -84,10 +87,6 @@ def find_exact_full_shared_edge(
 
 def is_concave(polygon: Polygon, tol: float = 1e-2) -> bool:
     """Return True if the polygon is concave based on convex hull area difference."""
-    #  if isinstance(polygon, MultiPolygon):
-    #      polygon = unary_union(polygon)
-    #      if isinstance(polygon, MultiPolygon):
-    #          polygon = max(polygon.geoms, key=lambda g: g.area)
     convex = polygon.convex_hull
     if convex.area < polygon.area:
         return False
@@ -141,22 +140,146 @@ def grow_group_from_seed(
     return group_idxs
 
 
-def group_polygons(polygons: List[Polygon]) -> List[List[int]]:
-    """Group polygons by shared edges for FPP grouping.
+def seam_is_collinear_with_bbox_edge(
+    seam: LineString, bbox: Polygon, tol: float = 1e1
+) -> bool:
+    """Check if a seam is collinear with any edge of the bounding box.
 
     Args:
-        polygons: List of Shapely Polygon objects.
+        seam (LineString): The seam to check.
+        bbox (Polygon): The bounding box.
+        tol (float, optional): Tolerance for collinearity check. Defaults to 1e-1.
 
     Returns:
-        List of groups, each a list of polygon indices.
+        bool: True if the seam is collinear with any edge of the bounding box,
+            False otherwise.
     """
+    bbox_edges = list(
+        zip(list(bbox.exterior.coords)[:-1], list(bbox.exterior.coords)[1:])
+    )
+    seam_coords = list(seam.coords)
+    for edge in bbox_edges:
+        a, b = edge
+        # Check both endpoints of seam for collinearity with the bbox edge
+        # If both seam endpoints are collinear with the edge (a,b),
+        # we consider the seam collinear with the bbox edge
+        if collinear(a, b, seam_coords[0], tol) and collinear(
+            a, b, seam_coords[1], tol
+        ):
+            return True
+    return False
+
+
+def classify_seams(
+    lines: List[LineString], bounding_box: Polygon, tol: float = 1e1
+) -> dict:
+    """Assign order to each seam.
+
+    0 = collinear with bbox edge
+    1 = crosses bbox edge in two places (primary)
+    2 = crosses primary (secondary)
+    etc.
+    """
+    seam_orders = {}
+    seams = list(lines)
+    n = len(seams)
+
+    # 0th order: collinear with bbox edge
+    for i, seam in enumerate(seams):
+        if seam_is_collinear_with_bbox_edge(seam, bounding_box, tol):
+            seam_orders[i] = 0
+
+    # 1st order: crosses TWO 0th order seams
+    for i, seam in enumerate(seams):
+        if i in seam_orders:
+            continue
+        crosses_edge = sum(
+            seam.intersects(seams[j]) for j, order in seam_orders.items() if order == 0
+        )
+        if crosses_edge == 2:
+            seam_orders[i] = 1
+
+    # Higher order: crosses previous order
+    current_order = 2
+    while len(seam_orders) < n:
+        for i, seam in enumerate(seams):
+            if i in seam_orders:
+                continue
+            crosses_prev = any(
+                seam.intersects(seams[j])
+                for j, order in seam_orders.items()
+                if order == current_order - 1
+            )
+            if crosses_prev:
+                seam_orders[i] = current_order
+        current_order += 1
+        if current_order > 10:
+            break
+    return seam_orders
+
+
+def polygon_max_seam_order(
+    poly: Polygon,
+    seams: List[LineString],
+    seam_orders: Dict[int, int],
+    tol: float = 1e1,
+) -> int:
+    """Return the highest seam order used by the edges of this polygon.
+
+    Args:
+        poly (Polygon): Polygon to check.
+        seams (List[LineString]): List of LineStrings (seams).
+        seam_orders (Dict[int, int]): Mapping seam index to order.
+        tol (float): Tolerance for collinearity.
+
+    Returns:
+        int: Maximum seam order present among the edges (or -1 if none match).
+    """
+    max_order = -1
+    poly_edges = list(
+        zip(list(poly.exterior.coords)[:-1], list(poly.exterior.coords)[1:])
+    )
+    for edge in poly_edges:
+        a, b = edge
+        for i, seam in enumerate(seams):
+            sc = list(seam.coords)
+            # Only check seam if it is a 2-point LineString
+            if len(sc) == 2:
+                c, d = sc
+                # Edges are considered equal if both endpoints are collinear
+                if (collinear(a, b, c, tol) and collinear(a, b, d, tol)) or (
+                    collinear(c, d, a, tol) and collinear(c, d, b, tol)
+                ):
+                    max_order = max(max_order, seam_orders.get(i, -1))
+    return max_order
+
+
+def group_polygons(polygons: List[Polygon], lines: List[LineString]) -> List[tuple]:
+    """Group polygons for FPP, using seam order logic to choose correct seed.
+
+    Args:
+        polygons: List of Shapely Polygon objects
+        lines: List of Shapely LineString seams
+
+    Returns:
+        List of groups (list of polygon indices)
+    """
+    bounding_box = unary_union(polygons).convex_hull
+    seam_orders = classify_seams(lines, bounding_box)
+    polygon_orders = [polygon_max_seam_order(p, lines, seam_orders) for p in polygons]
+
     adjacency = build_polygon_adjacency(polygons)
     already_grouped: Set[int] = set()
     groups: List[List[int]] = []
     n = len(polygons)
     while len(already_grouped) < n:
         candidates = [i for i in range(n) if i not in already_grouped]
-        seed = min(candidates, key=lambda idx: polygon_area(polygons[idx]))
+        # Find the highest order present among ungrouped polygons
+        highest_order = max(polygon_orders[i] for i in candidates)
+        # Filter to only those with that order
+        seed_candidates = [i for i in candidates if polygon_orders[i] == highest_order]
+        # Of these, pick the smallest area as seed
+        seed = min(seed_candidates, key=lambda idx: polygon_area(polygons[idx]))
         group = grow_group_from_seed(seed, polygons, adjacency, already_grouped)
         groups.append(list(group))
         already_grouped.update(group)

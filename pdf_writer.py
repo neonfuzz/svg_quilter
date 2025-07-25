@@ -3,8 +3,16 @@
 from typing import List, Dict, Any, Tuple
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black, HexColor
+from reportlab.pdfbase import pdfmetrics
 from shapely.affinity import rotate as shapely_rotate, translate as shapely_translate
 from shapely.geometry import Polygon, Point
+
+
+def text_center_offset(fontname: str, fontsize: float) -> float:
+    """Return baseline offset so text is centered vertically."""
+    ascent = pdfmetrics.getAscent(fontname)
+    descent = pdfmetrics.getDescent(fontname)
+    return (ascent + descent) / 2000 * fontsize
 
 
 def transform_group_shapes(
@@ -173,6 +181,8 @@ def pdf_writer(
                 )
                 c.setFont("Helvetica-Bold", label_fontsize)
                 c.setFillColor(black)
-                c.drawCentredString(lx, ly, piece_labels[poly_idx])
+                # Center text both horizontally and vertically
+                offset = text_center_offset("Helvetica-Bold", label_fontsize)
+                c.drawCentredString(lx, ly - offset, piece_labels[poly_idx])
         c.showPage()
     c.save()

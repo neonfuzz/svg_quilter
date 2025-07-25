@@ -8,7 +8,8 @@ from typing import List, Dict, Set
 
 import matplotlib.pyplot as plt
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
+from shapely.ops import unary_union
 
 from utils import remove_collinear_points
 
@@ -72,15 +73,27 @@ def find_exact_full_shared_edge(
     n2 = len(coords2)
 
     matches = 0
-    for i in range(n1-1):
+    for i in range(n1 - 1):
         a1, a2 = coords1[i], coords1[i + 1]
-        for j in range(n2-1):
+        for j in range(n2 - 1):
             b1, b2 = coords2[j], coords2[j + 1]
             if (coords_equal(a1, b2, tol) and coords_equal(a2, b1, tol)) or (
                 coords_equal(a1, b1, tol) and coords_equal(a2, b2, tol)
             ):
                 matches += 1
     return matches == 1  # Only one shared edge (FPP-style)
+
+
+def is_concave(polygon: Polygon, tol: float = 1e-2) -> bool:
+    """Return True if the polygon is concave based on convex hull area difference."""
+    #  if isinstance(polygon, MultiPolygon):
+    #      polygon = unary_union(polygon)
+    #      if isinstance(polygon, MultiPolygon):
+    #          polygon = max(polygon.geoms, key=lambda g: g.area)
+    convex = polygon.convex_hull
+    if convex.area < polygon.area:
+        return False
+    return (convex.area / polygon.area - 1) > tol
 
 
 def grow_group_from_seed(
@@ -117,8 +130,10 @@ def grow_group_from_seed(
             neighbor_poly = polygons[neighbor]
             match = find_exact_full_shared_edge(neighbor_poly, current_shape, tol)
             if match:
-                current_shape = current_shape.union(neighbor_poly)
-                current_shape = remove_collinear_points(current_shape.convex_hull)
+                merged = current_shape.union(neighbor_poly)
+                if is_concave(merged):
+                    continue
+                current_shape = remove_collinear_points(merged.convex_hull)
                 group_idxs.append(neighbor)
                 grouped.add(neighbor)
                 found = True

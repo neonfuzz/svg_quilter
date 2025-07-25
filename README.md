@@ -89,6 +89,8 @@ Run `python main.py --help` for full usage details.
 
     When drawing intersecting seams, use snapping for best results. "Eyeballing" may lead to extraneous small shapes.
 
+    Add nodes to all lines at multi-intersections (intersections of 3+ lines) for best results.
+
     The piecing pdf is automatically flipped, so you don't need to flip the diagram yourself.
 
     Known bug: the "seed" patch for a group is the smallest patch within the group. This is not always a desired behavior. Workaround: If you need to force a particular patch to be the seed patch, add an extra seam to make a small patch. You can then "whiteout" this seam manually.
@@ -113,7 +115,9 @@ utils.py
 
     Seam allowance and page size are fully customizable.
 
-    For best results, ensure shapes align perfectly in your SVG. Use snapping when possible.
+    For best results, make sure lines extend beyond their intended bounary.
+
+    If intersecting 3+ lines, add nodes to all lines at the precise intersection. Enable snapping.
 
     If you see unexpected groupings, check for tiny gaps or misalignments.
 

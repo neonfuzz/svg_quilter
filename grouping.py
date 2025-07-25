@@ -6,10 +6,8 @@ Polygon objects, along with geometric adjacency and grouping logic.
 
 from typing import List, Dict, Set
 
-import matplotlib.pyplot as plt
 import numpy as np
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import unary_union
+from shapely.geometry import Polygon
 
 from utils import remove_collinear_points
 

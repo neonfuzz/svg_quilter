@@ -4,7 +4,6 @@ Buffer the union of grouped polygons to create seam allowance regions.
 """
 
 from typing import List, Dict, Union
-import matplotlib.pyplot as plt
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
 

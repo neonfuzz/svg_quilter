@@ -55,7 +55,7 @@ def save_overall_layout_png(
             label,
             ha="center",
             va="center",
-            fontsize=16,
+            fontsize=10,
             fontweight="bold",
             bbox={"facecolor": "white", "alpha": 0.7, "boxstyle": "round,pad=0.2"},
             zorder=3,

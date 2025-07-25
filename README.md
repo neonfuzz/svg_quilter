@@ -115,7 +115,7 @@ utils.py
 
     Seam allowance and page size are fully customizable.
 
-    For best results, make sure lines extend beyond their intended bounary.
+    For best results, make sure lines extend beyond their intended boundary.
 
     If intersecting 3+ lines, add nodes to all lines at the precise intersection. Enable snapping.
 

@@ -78,8 +78,12 @@ def main() -> None:
 
     if not os.path.exists(args.svg_file):
         raise FileNotFoundError(f"SVG file not found: {args.svg_file}")
-    os.makedirs(os.path.dirname(args.pdf_file), exist_ok=True)
-    os.makedirs(os.path.dirname(args.png_file), exist_ok=True)
+    pdf_dir = os.path.dirname(args.pdf_file)
+    if pdf_dir:
+        os.makedirs(pdf_dir, exist_ok=True)
+    png_dir = os.path.dirname(args.pdf_file)
+    if png_dir:
+        os.makedirs(png_dir, exist_ok=True)
 
     svg_units_per_in = get_svg_units_per_inch(args.svg_file)
 

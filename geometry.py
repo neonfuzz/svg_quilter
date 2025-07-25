@@ -20,8 +20,8 @@ def lines_to_polygons(
 
     Args:
         lines: List of shapely.geometry.LineString objects.
-        snap_tol: Snapping tolerance (default 0.001 units).
-        min_area: Minimum polygon area to keep (default 1e-6).
+        snap_tol: Snapping tolerance (default 0.1 units).
+        min_area: Minimum polygon area to keep (default 0.1).
 
     Returns:
         List of convex hull polygons as shapely.geometry.Polygon objects.

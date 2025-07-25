@@ -47,15 +47,19 @@ def save_overall_layout_png(
         xs, ys = poly.exterior.xy
         ax.fill(xs, ys, color=color, alpha=0.85, linewidth=1, edgecolor="k", zorder=2)
 
+    max_area = max((poly.area for poly in polygons), default=1.0)
     for idx, label in piece_labels.items():
         x, y = label_positions[idx]
+        poly = polygons[idx]
+        area_ratio = poly.area / max_area if max_area else 1.0
+        fontsize = max(5, 15 * area_ratio**0.5)
         plt.text(
             x,
             y,
             label,
             ha="center",
             va="center",
-            fontsize=10,
+            fontsize=fontsize,
             fontweight="bold",
             bbox={"facecolor": "white", "alpha": 0.7, "boxstyle": "round,pad=0.2"},
             zorder=3,

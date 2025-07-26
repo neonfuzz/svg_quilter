@@ -5,12 +5,12 @@ from __future__ import annotations
 import base64
 import io
 import xml.etree.ElementTree as ET
-from typing import Tuple, Dict, List
+from typing import Dict, Generator, List, Tuple
 
 import matplotlib.colors as mcolors
-from PIL import Image
+import webcolors  # type: ignore[import-untyped]
+from PIL import Image  # type: ignore[import-untyped]
 from shapely.geometry import Polygon
-import webcolors
 
 
 def extract_image_from_svg(
@@ -26,6 +26,9 @@ def extract_image_from_svg(
         ValueError: If no base64 image is present in the SVG.
     """
     root = svg_tree.getroot()
+    if root is None:
+        raise ValueError("SVG tree is empty; no root element found.")
+
     ns = {
         "svg": "http://www.w3.org/2000/svg",
         "xlink": "http://www.w3.org/1999/xlink",
@@ -89,7 +92,7 @@ def average_color(
     )
     img_w, img_h = image.size
 
-    def neighbors() -> Tuple[int, int]:
+    def neighbors() -> Generator[Tuple[int, int]]:
         for dx in range(-radius, radius + 1):
             for dy in range(-radius, radius + 1):
                 x, y = px + dx, py + dy

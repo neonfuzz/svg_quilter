@@ -1,4 +1,3 @@
-import pytest
 from shapely.geometry import Polygon, MultiPolygon
 from seam_allowance import (
     group_polygons_to_shape,

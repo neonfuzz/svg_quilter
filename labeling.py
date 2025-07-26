@@ -4,7 +4,8 @@ Provide utilities to label polygons by group and piece number,
 and to extract label positions (using centroids).
 """
 
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
 from shapely.geometry import Polygon
 
 
@@ -48,7 +49,7 @@ def label_groups(
 
 def get_label_positions(
     polygons: List[Polygon], indices: Optional[List[int]] = None
-) -> Dict[int, Tuple[float, float]]:
+) -> Dict[int, Tuple[float, ...]]:
     """Return label positions as {poly_idx: (x, y)} using centroids.
 
     Args:
@@ -67,7 +68,7 @@ def label_polygons(
     polygons: List[Polygon],
     groups: List[List[int]],
     group_prefixes: Optional[List[str]] = None,
-) -> Tuple[Dict[int, str], Dict[int, Tuple[float, float]]]:
+) -> Tuple[Dict[int, str], Dict[int, Tuple[float, ...]]]:
     """Assign labels and label positions for polygons in groups.
 
     Args:

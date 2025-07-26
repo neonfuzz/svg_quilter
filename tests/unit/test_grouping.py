@@ -1,4 +1,3 @@
-import pytest
 from shapely.geometry import Polygon, LineString
 from grouping import (
     build_polygon_adjacency,

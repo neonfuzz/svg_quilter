@@ -6,8 +6,9 @@ operations or further processing.
 """
 
 from typing import List
-from svgpathtools import svg2paths2, Line
+
 from shapely.geometry import LineString
+from svgpathtools import Line, svg2paths2  # type: ignore[import-untyped]
 
 
 def parse_svg(svg_filename: str) -> List[LineString]:

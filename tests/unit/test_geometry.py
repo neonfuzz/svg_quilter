@@ -1,7 +1,6 @@
 import pytest
 from shapely.geometry import LineString, Polygon
 from geometry import lines_to_polygons
-from utils import remove_collinear_points  # Use your real implementation
 
 
 def test_lines_to_polygons_simple_square():

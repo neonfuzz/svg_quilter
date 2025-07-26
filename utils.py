@@ -1,10 +1,10 @@
 """General utilities for coloring, plotting, SVG parsing, and polygon cleanup."""
 
-import re
-from typing import List, Dict, Tuple, Optional
-import random
 import colorsys
+import random
+import re
 import xml.etree.ElementTree as ET
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
@@ -67,9 +67,9 @@ def get_svg_units_per_inch(svg_path: str) -> Optional[float]:
 
 
 def collinear(
-    a: Tuple[float, float],
-    b: Tuple[float, float],
-    c: Tuple[float, float],
+    a: Tuple[float, ...],
+    b: Tuple[float, ...],
+    c: Tuple[float, ...],
     tol: float = 1e-2,
 ) -> bool:
     """Determine if three points are collinear.
@@ -162,7 +162,7 @@ def plot_groups(polygons: List[Polygon], groups: List[List[int]]) -> None:
             plt.text(
                 centroid.x,
                 centroid.y,
-                f"{group_idx+1}.{group.index(poly_idx)+1}",
+                f"{group_idx + 1}.{group.index(poly_idx) + 1}",
                 ha="center",
                 va="center",
                 fontsize=12,
@@ -242,7 +242,7 @@ def plot_groups_with_seam_allowance(
             plt.text(
                 c.x,
                 c.y,
-                f"Group {group_idx+1}",
+                f"Group {group_idx + 1}",
                 ha="center",
                 va="center",
                 fontsize=14,

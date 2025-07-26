@@ -6,10 +6,11 @@ Provide utilities for grouping, coloring, and visualizing Shapely
 Polygon objects, along with geometric adjacency and grouping logic.
 """
 
-from typing import List, Dict, Set
+from typing import Dict, List, Set
 
 import numpy as np
-from shapely.geometry import Polygon, LineString, box
+from shapely.geometry import LineString, Polygon
+from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
 from utils import collinear, remove_collinear_points
@@ -85,7 +86,7 @@ def find_exact_full_shared_edge(
     return matches == 1  # Only one shared edge (FPP-style)
 
 
-def is_concave(polygon: Polygon, tol: float = 1e-2) -> bool:
+def is_concave(polygon: BaseGeometry, tol: float = 1e-2) -> bool:
     """Return True if the polygon is concave based on convex hull area difference."""
     convex = polygon.convex_hull
     if convex.area < polygon.area:
@@ -128,7 +129,7 @@ def grow_group_from_seed(
             match = find_exact_full_shared_edge(neighbor_poly, current_shape, tol)
             if match:
                 merged = current_shape.union(neighbor_poly)
-                if is_concave(merged):
+                if is_concave(merged) or not isinstance(merged.convex_hull, Polygon):
                     continue
                 current_shape = remove_collinear_points(merged.convex_hull)
                 group_idxs.append(neighbor)
@@ -254,7 +255,7 @@ def polygon_max_seam_order(
     return max_order
 
 
-def group_polygons(polygons: List[Polygon], lines: List[LineString]) -> List[tuple]:
+def group_polygons(polygons: List[Polygon], lines: List[LineString]) -> List[List[int]]:
     """Group polygons for FPP, using seam order logic to choose correct seed.
 
     Args:
@@ -263,8 +264,13 @@ def group_polygons(polygons: List[Polygon], lines: List[LineString]) -> List[tup
 
     Returns:
         List of groups (list of polygon indices)
+
+    Raises:
+        ValueError if bounding box is not a Polygon
     """
     bounding_box = unary_union(polygons).convex_hull
+    if not isinstance(bounding_box, Polygon):
+        raise ValueError("Bounding box must be a Polygon.")
     seam_orders = classify_seams(lines, bounding_box)
     polygon_orders = [polygon_max_seam_order(p, lines, seam_orders) for p in polygons]
 

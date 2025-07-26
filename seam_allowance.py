@@ -3,8 +3,9 @@
 Buffer the union of grouped polygons to create seam allowance regions.
 """
 
-from typing import List, Dict, Union
-from shapely.geometry import Polygon, MultiPolygon
+from typing import Dict, List, Union
+
+from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import unary_union
 
 from utils import remove_collinear_points
@@ -21,9 +22,15 @@ def group_polygons_to_shape(
 
     Returns:
         Unioned shape as Polygon or MultiPolygon.
+
+    Raises:
+        ValueError: If union is not a Polygon or MultiPolygon.
     """
     group_shapes = [polygons[idx] for idx in group]
-    return unary_union(group_shapes)
+    result = unary_union(group_shapes)
+    if isinstance(result, (Polygon, MultiPolygon)):
+        return result
+    raise ValueError("Union did not return a Polygon or MultiPolygon.")
 
 
 def clean_and_buffer_group_shape(
@@ -38,9 +45,17 @@ def clean_and_buffer_group_shape(
 
     Returns:
         Buffered shape as Polygon or MultiPolygon.
+
+    Raises:
+        ValueError: If convex hull is not a Polygon.
     """
-    simple = remove_collinear_points(group_shape.convex_hull)
-    buffered = simple.buffer(allowance, join_style=2)  # Flat corners
+    hull = group_shape.convex_hull
+
+    if not isinstance(hull, Polygon):
+        raise ValueError(f"Convex hull is not a Polygon (got {type(hull)})")
+
+    simple = remove_collinear_points(hull)
+    buffered = simple.buffer(allowance, join_style="mitre")  # Flat corners
     return buffered
 
 

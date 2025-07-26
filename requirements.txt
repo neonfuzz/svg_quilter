@@ -3,3 +3,5 @@ svgpathtools
 matplotlib
 reportlab
 rectpack
+pillow
+webcolors

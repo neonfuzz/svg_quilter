@@ -1,6 +1,6 @@
 """Write grouped FPP polygons and seam allowances to PDF using ReportLab."""
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black, HexColor
 from reportlab.pdfbase import pdfmetrics
@@ -110,6 +110,7 @@ def pdf_writer(
     groups: List[List[int]],
     piece_labels: Dict[int, str],
     label_positions: Dict[int, Tuple[float, float]],
+    color_names: Optional[Dict[int, str]] = None,
     page_width_in: float = 8.5,
     page_height_in: float = 11,
     svg_units_per_in: float = 96,
@@ -125,6 +126,8 @@ def pdf_writer(
         groups: List of groups, each a list of polygon indices.
         piece_labels: Dict {poly_idx: label string}.
         label_positions: Dict {poly_idx: (x, y)} original label positions.
+        polygon_colors: Optional mapping of polygon index to RGB fill color.
+        color_names: Optional mapping of polygon index to color name.
         page_width_in: PDF page width (inches).
         page_height_in: PDF page height (inches).
         svg_units_per_in: SVG units per inch.
@@ -184,5 +187,10 @@ def pdf_writer(
                 # Center text both horizontally and vertically
                 offset = text_center_offset("Helvetica-Bold", label_fontsize)
                 c.drawCentredString(lx, ly - offset, piece_labels[poly_idx])
+                if color_names and poly_idx in color_names:
+                    c.setFont("Helvetica", label_fontsize * 0.5)
+                    c.drawCentredString(
+                        lx, ly - offset - label_fontsize * 0.75, color_names[poly_idx]
+                    )
         c.showPage()
     c.save()

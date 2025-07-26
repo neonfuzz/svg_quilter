@@ -16,6 +16,7 @@ def save_overall_layout_png(
     dpi: int = 300,
     groups: Optional[List[List[int]]] = None,
     figsize: Tuple[int, int] = (8, 10),
+    polygon_colors: Optional[Dict[int, Tuple[int, int, int]]] = None,
 ) -> None:
     """Render and save a PNG with all polygons and labels at SVG positions.
 
@@ -33,7 +34,10 @@ def save_overall_layout_png(
     n_polys = len(polygons)
     poly_colors: Dict[int, Tuple[float, float, float]] = {}
 
-    if groups is not None:
+    if polygon_colors is not None:
+        for idx, rgb in polygon_colors.items():
+            poly_colors[idx] = tuple(channel / 255 for channel in rgb)
+    elif groups is not None:
         group_count = len(groups)
         group_colors = get_distinct_colors(group_count, pastel=True)
         for gi, group in enumerate(groups):

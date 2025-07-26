@@ -9,6 +9,8 @@ lays out for pages, and outputs both PNG and PDF for printing.
 import argparse
 import os
 
+import xml.etree.ElementTree as ET
+
 from svg_parser import parse_svg
 from geometry import lines_to_polygons
 from grouping import group_polygons
@@ -18,6 +20,7 @@ from layout import layout_groups
 from pdf_writer import pdf_writer
 from png_writer import save_overall_layout_png
 from utils import get_svg_units_per_inch
+from colors import polygon_color_map
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,12 +89,19 @@ def main() -> None:
         os.makedirs(png_dir, exist_ok=True)
 
     svg_units_per_in = get_svg_units_per_inch(args.svg_file)
+    svg_tree = ET.parse(args.svg_file)
 
     # Parse SVG to lines
     lines = parse_svg(args.svg_file)
 
     # Geometry: lines to polygons
     polygons = lines_to_polygons(lines)
+
+    # Polygon coloring
+    try:
+        polygon_colors, color_names = polygon_color_map(polygons, svg_tree)
+    except ValueError:
+        polygon_colors, color_names = None, None
 
     # Grouping
     groups = group_polygons(polygons, lines)
@@ -123,6 +133,7 @@ def main() -> None:
         label_positions,
         args.png_file,
         groups=groups,
+        polygon_colors=polygon_colors,
     )
 
     # PDF export
@@ -134,6 +145,7 @@ def main() -> None:
         groups,
         piece_labels,
         label_positions,
+        color_names=color_names,
         page_width_in=args.page_width_in,
         page_height_in=args.page_height_in,
         svg_units_per_in=svg_units_per_in,

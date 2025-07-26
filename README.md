@@ -11,6 +11,7 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 - **Seam Allowance:** Adds customizable seam allowances to each group.
 - **Flexible Layout:** Efficiently arranges groups onto printable PDF pages.
 - **Visualization:** Outputs a labeled PNG layout preview for quick checks.
+- **Automatic Colors:** If your svg contains a bitmap image, automatically detects colors and uses them for each piece.
 - **Easy Labeling:** Groups and pieces are automatically labeled and placed.
 - **Automatic Flipping:** Printed pieces are automatically flipped, so you're working with the wrong side of the fabric.
 
@@ -57,9 +58,9 @@ Run `python main.py --help` for full usage details.
 
 ### Output
 
-    PDF: Pages with all grouped, labeled quilt pieces + seam allowance.
+    PDF: Pages with all grouped, labeled quilt pieces + seam allowance. If there's a bitmap image in the svg, adds color names to the pieces.
 
-    PNG: Visual layout of all pieces and groups for quick verification.
+    PNG: Visual layout of all pieces and groups for quick verification. If there's a bitmap image in the svg, colors the pieces.
 
 ---
 
@@ -92,8 +93,6 @@ Run `python main.py --help` for full usage details.
     Add nodes to all lines at multi-intersections (intersections of 3+ lines) for best results.
 
     The piecing pdf is automatically flipped, so you don't need to flip the diagram yourself.
-
-    Known bug: the "seed" patch for a group is the smallest patch within the group. This is not always a desired behavior. Workaround: If you need to force a particular patch to be the seed patch, add an extra seam to make a small patch. You can then "whiteout" this seam manually.
 
 ---
 

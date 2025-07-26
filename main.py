@@ -7,6 +7,7 @@ lays out for pages, and outputs both PNG and PDF for printing.
 """
 
 import argparse
+import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,13 @@ DEFAULT_PAGE_WIDTH_IN: float = 8.5
 DEFAULT_PAGE_HEIGHT_IN: float = 11.0
 DEFAULT_SEAM_ALLOWANCE_IN: float = 0.25
 DEFAULT_MARGIN_IN: float = 0.5
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(level: int = logging.WARNING) -> None:
+    """Configure basic logging for the CLI."""
+    logging.basicConfig(format="%(levelname)s:%(name)s:%(message)s", level=level)
 
 
 @dataclass
@@ -102,6 +110,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_MARGIN_IN,
         help="Page margin in inches",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose (INFO level) logging",
+    )
     return parser.parse_args()
 
 
@@ -111,6 +125,7 @@ def ensure_output_dirs(config: PipelineConfig) -> None:
         output_dir = Path(output_path).parent
         if output_dir and not output_dir.exists():
             output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Created output directory %s, output_dir")
 
 
 def parse_svg_and_geometry(state: PipelineState) -> PipelineState:
@@ -121,10 +136,12 @@ def parse_svg_and_geometry(state: PipelineState) -> PipelineState:
     from svg_parser import parse_svg
     from utils import get_svg_units_per_inch
 
+    logger.info("Parsing SVG file %s", state.svg_file)
     state.svg_units_per_in = get_svg_units_per_inch(state.svg_file)
     state.svg_tree = ET.parse(state.svg_file)
     state.lines = parse_svg(state.svg_file)
     state.polygons = lines_to_polygons(state.lines)
+    logger.info("Parsed %d polygons", len(state.polygons))
     return state
 
 
@@ -132,12 +149,16 @@ def get_polygon_colors(state: PipelineState) -> PipelineState:
     """Assign colors to polygons, handling missing color mapping."""
     from colors import polygon_color_map
 
+    logger.info("Assigning colors to polygons")
     try:
         state.polygon_colors, state.color_names = polygon_color_map(
             state.polygons, state.svg_tree
         )
     except ValueError:
         state.polygon_colors, state.color_names = None, None
+        logger.info("No color information found in SVG")
+    if state.polygon_colors:
+        logger.info("Assigned colors to %d polygons", len(state.polygon_colors))
     return state
 
 
@@ -145,7 +166,9 @@ def group_polygons_step(state: PipelineState) -> PipelineState:
     """Group polygons based on geometry."""
     from grouping import group_polygons
 
+    logger.info("Grouping polygons")
     state.groups = group_polygons(state.polygons, state.lines)
+    logger.info("Formed %d groups", len(state.groups))
     return state
 
 
@@ -153,6 +176,7 @@ def label_polygons_step(state: PipelineState) -> PipelineState:
     """Label each polygon for identification and placement."""
     from labeling import label_polygons
 
+    logger.info("Labeling polygons")
     state.piece_labels, state.label_positions = label_polygons(
         state.polygons, state.groups
     )
@@ -168,12 +192,14 @@ def compute_seam_allowances(
     if state.svg_units_per_in is None:
         raise ValueError("SVG units per inch not set.")
 
+    logger.info("Computing seam allowance")
     state.seam_allowances = seam_allowance_polygons(
         state.polygons,
         state.groups,
         allowance_in_inches=config.seam_allowance_in,
         svg_units_per_inch=state.svg_units_per_in,
     )
+    logger.info("Computed seam allowances for %d groups", len(state.groups))
     return state
 
 
@@ -190,7 +216,9 @@ def compute_layout(state: PipelineState, config: PipelineConfig) -> PipelineStat
         margin_in=config.margin_in,
         svg_units_per_in=state.svg_units_per_in,
     )
+    logger.info("Computing layouts")
     state.pages = layout_groups(state.seam_allowances, layout_config)
+    logger.info("Layout produced %d pages", len(state.pages))
     return state
 
 
@@ -209,6 +237,7 @@ def export_png(state: PipelineState, config: PipelineConfig) -> None:
         groups=state.groups,
         polygon_colors=state.polygon_colors,
     )
+    logger.info("Saving PNG layout to %s", config.png_file)
     save_overall_layout_png(poly_layout_config, LayoutOutputConfig(config.png_file))
 
 
@@ -232,6 +261,7 @@ def export_pdf(state: PipelineState, config: PipelineConfig) -> None:
         page_height_in=config.page_height_in,
         svg_units_per_in=state.svg_units_per_in,
     )
+    logger.info("Saving PDF output to %s", config.pdf_file)
     pdf_writer(pdf_writer_args)
 
 
@@ -259,6 +289,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
     )
     ensure_output_dirs(config)
     state = PipelineState(svg_file=args.svg_file)
+    logger.info("Starting pipeline for %s", args.svg_file)
 
     state = parse_svg_and_geometry(state)
     state = get_polygon_colors(state)
@@ -274,6 +305,8 @@ def run_pipeline(args: argparse.Namespace) -> None:
 def main() -> None:
     """Main program entry point."""
     args = parse_args()
+    log_level = logging.INFO if args.verbose else logging.WARNING
+    setup_logging(level=log_level)
     run_pipeline(args)
 
 

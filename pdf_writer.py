@@ -1,5 +1,6 @@
 """Write grouped FPP polygons and seam allowances to PDF using ReportLab."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,6 +10,8 @@ from reportlab.pdfgen import canvas as rl_canvas
 from shapely.affinity import rotate as shapely_rotate
 from shapely.affinity import translate as shapely_translate
 from shapely.geometry import Point, Polygon
+
+logger = logging.getLogger(__name__)
 
 
 def text_center_offset(fontname: str, fontsize: float) -> float:
@@ -187,6 +190,7 @@ class PDFPolygonWriter:
                     self.draw_label(label_args)
             self.canvas.showPage()
         self.canvas.save()
+        logger.info("PDF saved to %s", self.args.filename)
 
 
 def pdf_writer(args: PDFWriterArgs) -> None:

@@ -1,5 +1,6 @@
 """General utilities for coloring, plotting, SVG parsing, and polygon cleanup."""
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -10,6 +11,8 @@ from shapely.geometry import Polygon
 from utils import get_distinct_colors
 
 matplotlib.use("Agg")
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -106,6 +109,7 @@ class PolygonLayoutPlotter:
             output_cfg.out_png, bbox_inches="tight", pad_inches=0.1, dpi=output_cfg.dpi
         )
         plt.close()
+        logger.info("PNG saved to %s", output_cfg.out_png)
 
 
 def save_overall_layout_png(

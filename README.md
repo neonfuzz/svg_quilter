@@ -31,27 +31,28 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 ## Usage
 
 ```bash
-python main.py [-h] [--pdf PDF_FILE] [--png PNG_FILE]
-             [--page-width PAGE_WIDTH_IN] [--page-height PAGE_HEIGHT_IN]
-             [--seam-allowance SEAM_ALLOWANCE_IN] [--margin MARGIN_IN]
-             svg_file
+usage: main.py [-h] [--pdf PDF_FILE] [--png PNG_FILE]
+               [--page-width PAGE_WIDTH_IN] [--page-height PAGE_HEIGHT_IN]
+               [--seam-allowance SEAM_ALLOWANCE_IN] [--margin MARGIN_IN] [-v]
+               svg_file
 
-Example:
+FPP SVG to PDF/PNG pattern generator
 
-`python main.py mypattern.svg --pdf out/pattern.pdf --png out/layout.png --seam-allowance 0.375`
+positional arguments:
+  svg_file              Input SVG file
 
-Arguments
-
-    svg_file          Input SVG file (required)
-
-Options
-Option	Description	Default
---pdf PDF_FILE	Output PDF file	out/pieces.pdf
---png PNG_FILE	Output PNG layout file	out/layout.png
---page-width PAGE_WIDTH_IN	PDF page width in inches	8.5
---page-height PAGE_HEIGHT_IN	PDF page height in inches	11.0
---seam-allowance SEAM_ALLOWANCE_IN	Seam allowance in inches	0.25
---margin MARGIN_IN	Page margin in inches	0.5
+options:
+  -h, --help            show this help message and exit
+  --pdf PDF_FILE        Output PDF file (default: out/pieces.pdf)
+  --png PNG_FILE        Output PNG layout file (default: out/layout.png)
+  --page-width PAGE_WIDTH_IN
+                        PDF page width in inches (default: 8.5)
+  --page-height PAGE_HEIGHT_IN
+                        PDF page height in inches (default: 11.0)
+  --seam-allowance SEAM_ALLOWANCE_IN
+                        Seam allowance in inches (default: 0.25)
+  --margin MARGIN_IN    Page margin in inches (default: 0.5)
+  -v, --verbose         Enable verbose (INFO level) logging (default: False)
 ```
 
 Run `python main.py --help` for full usage details.

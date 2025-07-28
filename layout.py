@@ -5,11 +5,17 @@ using translation and rotation to fit within printable areas.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union, cast
 
-from rectpack import newPacker  # type: ignore[import-untyped]
+from pyclipper import MinkowskiSum  # type: ignore[import-untyped]
+from shapely import unary_union
 from shapely.affinity import rotate as shapely_rotate
-from shapely.geometry import Polygon
+from shapely.affinity import translate as shapely_translate
+from shapely.geometry import LineString, MultiLineString, Polygon, box
+from shapely.geometry.base import BaseGeometry
+from tqdm import tqdm
+
+from utils import remove_collinear_points
 
 
 @dataclass
@@ -17,9 +23,10 @@ class Placement:
     """Stores placement details for a seam allowance group on a page."""
 
     group_idx: int
-    rotation: float
+    rotation: int
     dx: float
     dy: float
+    poly: Polygon
 
 
 @dataclass
@@ -34,22 +41,23 @@ class LayoutConfig:
     allow_rotate: bool = True
 
 
-@dataclass
-class PlacementInputs:
-    """Inputs for placing a polygon on the layout."""
-
-    group_idx: int
-    x: float
-    y: float
-    minx: float
-    miny: float
-    pre_rot_angle: float
-    rectpack_rot: int
+def _as_polygon(geom: BaseGeometry) -> Polygon:
+    """Safely cast BaseGeometry to Polygon, or raise informative error."""
+    if not isinstance(geom, Polygon):
+        raise TypeError(f"Expected Polygon, got {type(geom).__name__}")
+    return geom
 
 
-def minimal_bounding_box_rotation(
-    poly: Polygon, step: int = 5
-) -> Tuple[Polygon, float]:
+def _polygon_exterior_coords(geom: BaseGeometry) -> List[Tuple[float, ...]]:
+    """Get exterior coords from a Polygon, raise if not Polygon.
+
+    Ensures each coord is a 2-tuple of floats.
+    """
+    poly = _as_polygon(geom.normalize())
+    return [cast(Tuple[float, ...], (c[0], c[1])) for c in poly.exterior.coords]
+
+
+def minimal_bounding_box_rotation(poly: Polygon, step: int = 5) -> Tuple[Polygon, int]:
     """Rotate a polygon to minimize its bounding box area."""
     min_area = float("inf")
     best_angle = 0
@@ -63,6 +71,52 @@ def minimal_bounding_box_rotation(
             best_angle = angle
             best_poly = rotated
     return best_poly, best_angle
+
+
+def minkowski(
+    poly1: Polygon, poly2: Polygon, diff: bool = False, scale: int = 100000
+) -> List[Polygon]:
+    """Compute the Minkowski sum of two polygons.
+
+    Args:
+        poly1: The first polygon.
+        poly2: The second polygon.
+        diff: If True, compute the difference instead of the sum. Defaults to False.
+        scale: Scale factor for pyclipper coordinates. Defaults to 100000.
+
+    Returns:
+        List[Polygon]: A list of polygons representing the Minkowski sum or difference.
+    """
+    coords1 = _polygon_exterior_coords(poly1)[:-1]
+    coords1 = [(int(x * scale), int(y * scale)) for x, y in coords1]
+
+    coords2 = _polygon_exterior_coords(poly2)[:-1]
+    x0, y0 = coords2[0]
+    coords2 = [(x - x0, y - y0) for x, y in coords2]
+    if not diff:
+        # Reflect poly2 about the origin
+        coords2 = [(-x, -y) for x, y in coords2]
+    coords2 = [(int(x * scale), int(y * scale)) for x, y in coords2]
+
+    mink_raw = MinkowskiSum(coords1, coords2, True)
+    mink = [Polygon([(x / scale, y / scale) for (x, y) in poly]) for poly in mink_raw]
+    return mink
+
+
+def score_placements(placements: List[Placement]) -> float:
+    """Calculate a score for a list of placements.
+
+    The score can be customized as needed. This version computes
+    the total area of the bounding box used by all polygons
+    (after placement).
+
+    Args:
+        placements: List of Placement objects.
+
+    Returns:
+        A float score; lower is better (less area used).
+    """
+    return unary_union([p.poly for p in placements]).convex_hull.area
 
 
 class PageLayoutEngine:
@@ -80,108 +134,139 @@ class PageLayoutEngine:
         """
         self.seam_allowances = seam_allowances
         self.config = config
-        self.inner_width = (
-            config.page_width_in - 2 * config.margin_in
-        ) * config.svg_units_per_in
-        self.inner_height = (
-            config.page_height_in - 2 * config.margin_in
-        ) * config.svg_units_per_in
-        self.margin = config.margin_in * config.svg_units_per_in
         self.grow = (config.margin_between / 2) * config.svg_units_per_in
 
-    def layout_groups(self) -> List[List[Placement]]:
-        """Arrange seam allowance polygons using rectpack for tight packing."""
-        rectangles, rotated_polys = self.prepare_packing_inputs()
-        packer = self._run_packer(rectangles)
-        self._validate_packing(packer)
-        return self._extract_placements_from_packer(packer, rectangles, rotated_polys)
+        inner_width = (
+            config.page_width_in - 2 * config.margin_in
+        ) * config.svg_units_per_in
+        inner_height = (
+            config.page_height_in - 2 * config.margin_in
+        ) * config.svg_units_per_in
+        margin = config.margin_in * config.svg_units_per_in
+        # Normalize, ensure always Polygon
+        self.box: Polygon = _as_polygon(
+            _as_polygon(box(margin, margin, inner_width, inner_height)).normalize()
+        )
 
-    def prepare_packing_inputs(self):
-        """Return rectangles and rotated polygons for each group.
+    def layout_groups(self) -> List[List[Placement]]:
+        """Place groups of polygons across multiple pages.
 
         Returns:
-            rectangles: List of (group_idx, width, height, minx, miny)
-            rotated_polys: Dict of group_idx to (rotated Polygon, pre-rotation angle)
+            A list of pages. Each page is a list of `Placement`s.
         """
-        rectangles = []
-        rotated_polys = {}
-        for group_idx, poly in self.seam_allowances.items():
-            best_poly, pre_rot_angle = minimal_bounding_box_rotation(poly)
-            rotated_polys[group_idx] = (best_poly, pre_rot_angle)
-            minx, miny, maxx, maxy = best_poly.bounds
-            w = maxx - minx + 2 * self.grow
-            h = maxy - miny + 2 * self.grow
-            rectangles.append((group_idx, w, h, minx, miny))
-        return rectangles, rotated_polys
-
-    def _run_packer(self, rectangles):
-        packer = newPacker(rotation=self.config.allow_rotate)
-        for group_idx, w, h, _, _ in rectangles:
-            packer.add_rect(w, h, group_idx)
-        packer.add_bin(self.inner_width, self.inner_height, float("inf"))
-        packer.pack()
-        return packer
-
-    def _validate_packing(self, packer):
-        packed_ids = {rect.rid for abin in packer for rect in abin}
-        unpacked_ids = set(self.seam_allowances.keys()) - packed_ids
-        if unpacked_ids:
-            failed = ", ".join(str(i) for i in sorted(unpacked_ids))
-            raise ValueError(
-                f"Packing failed for group(s): {failed}. "
-                "They may be too large for the page dimensions."
-            )
-
-    def _calculate_rectpack_rotation(self, orig_w, orig_h, packed_w, packed_h) -> int:
-        return (
-            90
-            if self.config.allow_rotate and ((packed_w, packed_h) != (orig_w, orig_h))
-            else 0
-        )
-
-    def _get_transformed_polygon_and_offset(self, rotated_poly, rectpack_rot):
-        if rectpack_rot == 90:
-            rotated_poly = shapely_rotate(
-                rotated_poly, 90, origin="centroid", use_radians=False
-            )
-        minx, miny, _, _ = rotated_poly.bounds
-        return rotated_poly, minx, miny
-
-    def _make_placement(self, inputs: PlacementInputs) -> Placement:
-        dx = inputs.x + self.grow + self.margin - inputs.minx
-        dy = inputs.y + self.grow + self.margin - inputs.miny
-        rotation = (inputs.pre_rot_angle + inputs.rectpack_rot) % 360
-        return Placement(
-            group_idx=inputs.group_idx,
-            rotation=rotation,
-            dx=dx,
-            dy=dy,
-        )
-
-    def _extract_placements_from_packer(self, packer, rectangles, rotated_polys):
-        # pylint: disable=too-many-locals
-        # The number of locals adds, rather than subtracts, clarity.
         pages: List[List[Placement]] = []
-        for abin in packer:
-            page_placements: List[Placement] = []
-            for rect in abin:
-                orig = next(r for r in rectangles if r[0] == rect.rid)
-                orig_w, orig_h, minx, miny = orig[1], orig[2], orig[3], orig[4]
-                rectpack_rot = self._calculate_rectpack_rotation(
-                    orig_w, orig_h, rect.width, rect.height
-                )
-                rotated_poly, pre_rot_angle = rotated_polys[rect.rid]
-                rotated_poly, minx, miny = self._get_transformed_polygon_and_offset(
-                    rotated_poly, rectpack_rot
-                )
-                placement_inputs = PlacementInputs(
-                    rect.rid, rect.x, rect.y, minx, miny, pre_rot_angle, rectpack_rot
-                )
-                placement = self._make_placement(placement_inputs)
-                page_placements.append(placement)
-            if page_placements:
-                pages.append(page_placements)
+        for idx, poly, angle in tqdm(
+            self.prepare_packing_inputs(), desc="Placing groups"
+        ):
+            placed_on_existing = False
+            # Try to place on any existing page
+            for page in pages:
+                next_placement = self._place_next(idx, poly, angle, page)
+                if next_placement is not None:
+                    page.append(next_placement)
+                    placed_on_existing = True
+                    break
+            if not placed_on_existing:
+                # Can't fit: start new page and place as first piece
+                placement = self._place_first(idx, poly, angle)
+                pages.append([placement])
         return pages
+
+    def _place_first(
+        self, idx: int, poly: Polygon, angle: int, tol: float = 1e-6
+    ) -> Placement:
+        """Attempt to place the first polygon on the page, trying basic rotations.
+
+        If it does not fit at any rotation, raise an error.
+        """
+        for ang in [0, 90, 45, 135]:
+            rotated = shapely_rotate(poly, ang, origin="centroid").normalize()
+            rotated = _as_polygon(rotated)
+            x0, y0, _, _ = rotated.bounds
+            x1, y1 = self.box.exterior.coords[0]
+            dx, dy = x1 - x0, y1 - y0
+            rotated_t = shapely_translate(rotated, xoff=dx, yoff=dy)
+            rotated_t = _as_polygon(rotated_t)
+            if self.box.contains(rotated_t.buffer(-tol)):
+                return Placement(
+                    group_idx=idx, rotation=angle + ang, dx=dx, dy=dy, poly=rotated_t
+                )
+        raise ValueError(f"Largest piece (group {idx}) cannot be placed on the page.")
+
+    def _place_next(
+        self, idx: int, poly: Polygon, angle: int, placed: List[Placement]
+    ) -> Optional[Placement]:
+        """Find the best placement for a polygon given existing placements.
+
+        Minimizes by `score_placements`.
+        """
+
+        def candidate_placements_for_rotation(
+            rotated: Polygon, ang: int
+        ) -> List[Placement]:
+            nfp_parts = [unary_union(minkowski(p.poly, rotated)) for p in placed]
+            nfp = unary_union(nfp_parts).boundary
+            ifp_raw = minkowski(self.box, rotated)
+            if len(ifp_raw) == 1:
+                return []
+            ifp = _as_polygon(ifp_raw[1])
+            valid = ifp.intersection(nfp)
+            # Accept only if valid is LineString or MultiLineString
+            if isinstance(valid, (LineString, MultiLineString)):
+                coords = self._extract_coords(valid)
+            else:
+                coords = []
+            candidates = []
+            x0, y0 = rotated.exterior.coords[0]
+            for coord in coords:
+                dx, dy = coord[0] - x0, coord[1] - y0
+                candidates.append(
+                    Placement(
+                        group_idx=idx,
+                        rotation=angle + ang,
+                        dx=dx,
+                        dy=dy,
+                        poly=shapely_translate(rotated, xoff=dx, yoff=dy),
+                    )
+                )
+            return candidates
+
+        best: Optional[Placement] = None
+        for ang in [0, 45, 90, 135, 180, 225, 270, 315]:
+            rotated = shapely_rotate(poly, ang, origin="centroid").normalize()
+            rotated = _as_polygon(rotated)
+            candidates = candidate_placements_for_rotation(rotated, ang)
+            for candidate in candidates:
+                score = score_placements(placed + [candidate])
+                if best is None or score < score_placements(placed + [best]):
+                    best = candidate
+        return best
+
+    def _extract_coords(
+        self, valid: Union[LineString, MultiLineString]
+    ) -> List[Tuple[float, ...]]:
+        if isinstance(valid, LineString):
+            return [cast(Tuple[float, ...], c) for c in valid.coords]
+        # MultiLineString.geoms: sequence of LineString
+        coords: List[Tuple[float, ...]] = []
+        for line in valid.geoms:
+            coords.extend([cast(Tuple[float, ...], c) for c in line.coords])
+        return coords
+
+    def prepare_packing_inputs(self) -> List[Tuple[int, Polygon, int]]:
+        """Prepare the inputs for packing.
+
+        Sort polygons by area, rotating them to minimize bounding box size,
+        and applying a buffer for inter-piece margin.
+        """
+        to_pack: List[Tuple[int, Polygon, int]] = []
+        for idx, poly in sorted(self.seam_allowances.items(), key=lambda x: -x[1].area):
+            poly, angle = minimal_bounding_box_rotation(poly)
+            poly = poly.buffer(self.grow, join_style="mitre")
+            poly = remove_collinear_points(poly)
+            poly = _as_polygon(poly.normalize())
+            to_pack.append((idx, poly, angle))
+        return to_pack
 
 
 def layout_groups(

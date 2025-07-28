@@ -75,7 +75,7 @@ Run `python main.py --help` for full usage details.
 
     reportlab — for PDF output
 
-    rectpack - for packing/packing algorithm
+    pyclipper - for packing/packing algorithm
 
 ---
 

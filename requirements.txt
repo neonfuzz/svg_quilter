@@ -1,7 +1,7 @@
+matplotlib
+pillow
+pyclipper
+reportlab
 shapely
 svgpathtools
-matplotlib
-reportlab
-rectpack
-pillow
 webcolors

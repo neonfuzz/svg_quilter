@@ -124,3 +124,32 @@ def test_pdf_writer_creates_file(tmp_path):
     )
     pdf_writer(args)
     assert (tmp_path / "out.pdf").exists()
+
+
+def test_pdfwriterargs_flip_default_true():
+    args = PDFWriterArgs(
+        filename="out.pdf",
+        pages=[],
+        seam_allowances={},
+        polygons=[],
+        groups=[],
+        piece_labels={},
+        label_positions={},
+    )
+    assert args.flip_y is True
+
+
+def test_pdfpolygonwriter_write_no_flip(tmp_path):
+    args = PDFWriterArgs(
+        filename=str(tmp_path / "out.pdf"),
+        pages=[[]],
+        seam_allowances={},
+        polygons=[],
+        groups=[],
+        piece_labels={},
+        label_positions={},
+        flip_y=False,
+    )
+    writer = PDFPolygonWriter(args)
+    writer.write()
+    assert (tmp_path / "out.pdf").is_file()

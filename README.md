@@ -2,6 +2,12 @@
 
 A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (FPP)** quilt patterns—automatically grouping, labeling, and laying out your quilt pieces for easy printing.
 
+<p><img alt="A cat stands before a moonlit background. Seam lines cross the image." src="images/gato_raw.png" height="450">
+<img alt="A FPP diagram of the cat before the moon. Each piece has a label." src="images/gato_layout.png" height="450">
+<img alt="A close-up of the pieces for printing, showing color names and a 1/4 inch seam allowance." src="images/gato_pieces.png" height="450"></p>
+
+<p><img alt="A zoomed-out view of the pieces for printing, showing efficient packing and page usage" src="images/gato_pieces_big.png" height="450"></p>
+
 ---
 
 ## Features
@@ -14,6 +20,34 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 - **Automatic Colors:** If your svg contains a bitmap image, automatically detects colors and uses them for each piece.
 - **Easy Labeling:** Groups and pieces are automatically labeled and placed.
 - **Automatic Flipping:** Printed pieces are automatically flipped, so you're working with the wrong side of the fabric.
+
+---
+
+## Quick-Start Example
+
+### Draw on your SVG file
+<p><img alt="3groupA_raw" src="images/3groupA_raw.png" width="300"></p>
+
+You can use [3groupA.svg](tests/e2e/fixtures/3groupA.svg) to get started.
+
+### Run the script
+
+`python main.py tests/e2e/fixtures/3groupA.svg`
+
+### FPP groups and sew order are automatically calculated
+
+`open out/layout.png`
+
+<p><img alt="An svg with 'cuts' drawn across it to indicate seams" src="images/3groupA_layout.png" width="300"></p>
+
+### Pattern pieces are automatically generated and placed on your page
+
+`open out/pieces.pdf`
+
+<p><img alt="Paper pattern pieces with seam allowances are packed on a page" src="images/3groupA_pieces.png" width="300"></p>
+
+Note that the pieces are flipped versions of the layout (i.e, they're the wrong side of the fabric).
+
 
 ---
 
@@ -63,6 +97,10 @@ Run `python main.py --help` for full usage details.
 
     PNG: Visual layout of all pieces and groups for quick verification. If there's a bitmap image in the svg, colors the pieces.
 
+### Testing Install
+
+The software installation can be tested with `pytest`. This includes unit tests and several end-to-end tests on example svgs.
+
 ---
 
 ## Main Dependencies
@@ -81,49 +119,42 @@ Run `python main.py --help` for full usage details.
 
 ## SVG Guidelines
 
-    Use simple SVGs: all lines must be straight paths; no rects, no shapes, no curves.
+* Use simple SVGs: all lines must be straight paths; no rects, no shapes, no curves.
 
-    Each "patch" must be a closed shape made of lines or polylines.
+* Each "patch" must be a closed shape made of lines or polylines.
 
-    All paths must be in the same SVG file.
+* All paths must be in the same SVG file.
 
-    Use Inkscape or similar to prepare SVGs.
+* Use Inkscape or similar to prepare SVGs.
 
-    When drawing intersecting seams, use snapping for best results. "Eyeballing" may lead to extraneous small shapes.
+* When drawing intersecting seams, use snapping for best results. "Eyeballing" may lead to extraneous small shapes.
 
-    Add nodes to all lines at multi-intersections (intersections of 3+ lines) for best results.
+* Add nodes to all lines at multi-intersections (intersections of 3+ lines) for best results.
 
-    The piecing pdf is automatically flipped, so you don't need to flip the diagram yourself.
+<p><img alt="converging lines in the FPP pattern always have nodes defined for all lines" src="images/2converging_nodes.png" width="300"></p>
 
----
-
-## Project Structure
-
-main.py
-svg_parser.py
-geometry.py
-grouping.py
-labeling.py
-seam_allowance.py
-layout.py
-pdf_writer.py
-utils.py
 
 ---
 
 ## Tips
 
-    Seam allowance and page size are fully customizable.
+* Some examples are found in the `tests/e2e/fixtures` directory, if you want to play with examples.
 
-    For best results, make sure lines extend beyond their intended boundary.
+* Seam allowance and page size are fully customizable.
 
-    If intersecting 3+ lines, add nodes to all lines at the precise intersection. Enable snapping.
+* For best results, make sure lines extend beyond their intended boundary.
 
-    If you see unexpected groupings, check for tiny gaps or misalignments.
+* If intersecting 3+ lines, add nodes to all lines at the precise intersection. Enable snapping.
+
+* If you see unexpected groupings, check for tiny gaps or misalignments.
+
+* If there is a bitmap image in your svg, the `layout.png` colors will reflect it! Color names will also be printed on your `pieces.pdf`. NOTE: the image must be in the same group/layer as your seam lines.
+
+---
 
 ## License
 
-MIT License.
+MIT License. Contributions and adaptations welcome and encouraged.
 See LICENSE file for details.
 
 

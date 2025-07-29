@@ -17,7 +17,7 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 - **Seam Allowance:** Adds customizable seam allowances to each group.
 - **Flexible Layout:** Efficiently arranges groups onto printable PDF pages.
 - **Visualization:** Outputs a labeled PNG layout preview for quick checks.
-- **Automatic Colors:** If your svg contains a bitmap image, automatically detects colors and uses them for each piece.
+- **Automatic Colors:** If your SVG contains a bitmap image, automatically detects colors and uses them for each piece.
 - **Easy Labeling:** Groups and pieces are automatically labeled and placed.
 - **Automatic Flipping:** Printed pieces are automatically flipped, so you're working with the wrong side of the fabric.
 
@@ -54,11 +54,11 @@ Note that the pieces are flipped versions of the layout (i.e, they're the wrong 
 ## Requirements
 
 - Python 3.8+
-- Install dependencies:
+- Install dependencies with:
 
 `pip install -r requirements.txt`
 
-(See below for main libraries.)
+(See below for the main libraries.)
 
 ---
 
@@ -93,27 +93,23 @@ Run `python main.py --help` for full usage details.
 
 ### Output
 
-    PDF: Pages with all grouped, labeled quilt pieces + seam allowance. If there's a bitmap image in the svg, adds color names to the pieces.
+    PDF: Pages with all grouped, labeled quilt pieces + seam allowance. If there's a bitmap image in the SVG, adds color names to the pieces.
 
-    PNG: Visual layout of all pieces and groups for quick verification. If there's a bitmap image in the svg, colors the pieces.
+    PNG: Visual layout of all pieces and groups for quick verification. If there's a bitmap image in the SVG, colors the pieces.
 
 ### Testing Install
 
-The software installation can be tested with `pytest`. This includes unit tests and several end-to-end tests on example svgs.
+The software installation can be tested with `pytest`. This includes unit tests and several end-to-end tests on example SVGs.
 
 ---
 
 ## Main Dependencies
 
-    shapely — for geometry handling
-
-    svgpathtools — for SVG parsing
-
-    matplotlib — for layout/preview visualization
-
-    reportlab — for PDF output
-
-    pyclipper - for packing/packing algorithm
+- **shapely** — for geometry handling
+- **svgpathtools** — for SVG parsing
+- **matplotlib** — for layout/preview visualization
+- **reportlab** — for PDF output
+- **pyclipper** - for packing/packing algorithm
 
 ---
 
@@ -148,7 +144,7 @@ The software installation can be tested with `pytest`. This includes unit tests 
 
 * If you see unexpected groupings, check for tiny gaps or misalignments.
 
-* If there is a bitmap image in your svg, the `layout.png` colors will reflect it! Color names will also be printed on your `pieces.pdf`. NOTE: the image must be in the same group/layer as your seam lines.
+* If there is a bitmap image in your SVG, the `layout.png` colors will reflect it! Color names will also be printed on your `pieces.pdf`. NOTE: the image must be in the same group/layer as your seam lines.
 
 ---
 

@@ -1,9 +1,11 @@
+import pytest
 from shapely.geometry import Polygon, LineString
 from grouping import (
     build_polygon_adjacency,
     classify_seams,
     find_exact_full_shared_edge,
     group_polygons,
+    grow_group_from_seed,
     is_concave,
     polygon_area,
     polygon_max_seam_order,
@@ -124,3 +126,27 @@ def test_polygon_max_seam_order():
     assert polygon_max_seam_order(poly, [seam1], {0: 0}) == 0
     # No seams at all
     assert polygon_max_seam_order(poly, [], {}) == -1
+
+def test_grow_group_from_seed_skips_concave(monkeypatch):
+    s1 = Polygon([(0,0),(1,0),(1,1),(0,1)])
+    s2 = Polygon([(1,0),(2,0),(2,1),(1,1)])  # horizontal neighbor
+    s3 = Polygon([(0,1),(1,1),(1,2),(0,2)])  # would create L shape
+    polygons = [s1, s2, s3]
+    adjacency = {0:{1,2}, 1:{0}, 2:{0}}
+    # Force is_concave to return True to exercise the continue branch
+    monkeypatch.setattr('grouping.is_concave', lambda *_args, **_kw: True)
+    monkeypatch.setattr('grouping.remove_collinear_points', lambda g: g)
+    group = grow_group_from_seed(0, polygons, adjacency, set())
+    assert group == [0]
+
+
+def test_classify_seams_breaks_if_unresolvable():
+    bbox = Polygon([(0,0),(2,0),(2,2),(0,2)])
+    seams = [LineString([(0.5,0.5),(1.5,0.5)])]  # inside box, no crossings
+    orders = classify_seams(seams, bbox, tol=1e-6)
+    assert orders == {}
+
+
+def test_group_polygons_raises_on_empty():
+    with pytest.raises(ValueError):
+        group_polygons([], [])

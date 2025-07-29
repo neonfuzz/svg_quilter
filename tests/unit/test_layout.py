@@ -1,6 +1,6 @@
 import math
 import pytest
-from shapely.geometry import Polygon, box
+from shapely.geometry import Polygon, box, LineString, MultiPoint
 
 from layout import (
     LayoutConfig,
@@ -8,6 +8,7 @@ from layout import (
     layout_groups,
     PageLayoutEngine,
     Placement,
+    _as_polygon,
 )
 
 
@@ -124,3 +125,20 @@ def test_minimal_bounding_box_rotation_is_rotation_invariant_for_regular_polygon
     rotated_poly, angle = minimal_bounding_box_rotation(pentagon)
     assert pytest.approx(rotated_poly.area) == pytest.approx(pentagon.area)
     assert 0 <= angle < 180
+
+def test_as_polygon_raises_typeerror():
+    with pytest.raises(TypeError):
+        _as_polygon(LineString([(0,0),(1,1)]))
+
+
+def test_place_next_handles_no_line_intersection(monkeypatch):
+    square = make_square()
+    engine = PageLayoutEngine({0: square, 1: square}, LayoutConfig(2, 2))
+    first = engine._place_first(0, square, 0)
+
+    # Force unary_union and minkowski to return multipoint so intersection yields not LineString
+    monkeypatch.setattr('layout.unary_union', lambda *args, **kwargs: MultiPoint([(0,0),(1,1)]))
+    monkeypatch.setattr('layout.minkowski', lambda *args, **kwargs: [square, square])
+
+    res = engine._place_next(1, square, 0, [first])
+    assert res is None

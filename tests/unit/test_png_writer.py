@@ -69,3 +69,11 @@ def test_save_overall_layout_png(tmp_path):
     save_overall_layout_png(layout_cfg, output_cfg)
     assert os.path.isfile(output_cfg.out_png)
     assert os.path.getsize(output_cfg.out_png) > 50
+
+def test_save_overall_layout_png_defaults(tmp_path, monkeypatch):
+    polys, labels, positions = simple_polygons()
+    layout_cfg = PolygonLayoutConfig(polys, labels, positions)
+    monkeypatch.chdir(tmp_path)
+    save_overall_layout_png(layout_cfg)
+    out_file = tmp_path / "overall_layout.png"
+    assert out_file.is_file() and out_file.stat().st_size > 0

@@ -112,3 +112,34 @@ def test_pipeline_cli_e2e(tmp_path: Path):
     )
 
     assert "Done! Output written to:" in result.stdout
+
+
+def test_pipeline_cli_no_flip(tmp_path: Path):
+    project_root = Path(__file__).parent.parent.parent
+    main_py = project_root / "main.py"
+    input_svg = project_root / "tests" / "e2e" / "fixtures" / "1groupA.svg"
+    output_pdf = tmp_path / "out/pieces.pdf"
+    output_png = tmp_path / "out/layout.png"
+
+    result = subprocess.run(
+        [
+            "python",
+            str(main_py),
+            str(input_svg),
+            "--pdf",
+            str(output_pdf),
+            "--png",
+            str(output_png),
+            "--no-flip",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+    assert result.returncode == 0
+    assert output_pdf.exists() and output_pdf.stat().st_size > 0
+    assert output_png.exists() and output_png.stat().st_size > 0

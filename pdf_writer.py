@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from reportlab.lib.colors import HexColor, black
+from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas as rl_canvas
 from shapely.affinity import rotate as shapely_rotate
@@ -76,6 +77,7 @@ class PDFWriterArgs:
     page_height_in: float = 11.0
     svg_units_per_in: float = 96.0
     label_fontsize: int = 24
+    flip_y: bool = True
 
 
 @dataclass
@@ -103,14 +105,18 @@ class PDFPolygonWriter:
         self.stroke_color: Any = black
         self.alpha: float = 1.0
         self.linewidth: float = 1.0
+        self._pts_per_in = inch
 
     def draw_polygon(self, poly: Polygon) -> None:
         """Draw a polygon on the instance's canvas using instance drawing attributes."""
         assert self.canvas is not None, "Canvas must be initialized before drawing."
-        pts = [
-            (x / self.args.svg_units_per_in * 72, y / self.args.svg_units_per_in * 72)
-            for x, y in poly.exterior.coords
-        ]
+        pts = []
+        for x, y in poly.exterior.coords:
+            px = x / self.args.svg_units_per_in * self._pts_per_in
+            py = y / self.args.svg_units_per_in * self._pts_per_in
+            if self.args.flip_y:
+                py = self.args.page_height_in * self._pts_per_in - py
+            pts.append((px, py))
         path = self.canvas.beginPath()
         path.moveTo(*pts[0])
         for pt in pts[1:]:
@@ -131,10 +137,10 @@ class PDFPolygonWriter:
         pt = Point(orig_x, orig_y)
         pt_rot = shapely_rotate(pt, args.rotation, origin=args.seam_poly.centroid)
         pt_tr = shapely_translate(pt_rot, args.dx, args.dy)
-        lx, ly = (
-            pt_tr.x / self.args.svg_units_per_in * 72,
-            pt_tr.y / self.args.svg_units_per_in * 72,
-        )
+        lx = pt_tr.x / self.args.svg_units_per_in * self._pts_per_in
+        ly = pt_tr.y / self.args.svg_units_per_in * self._pts_per_in
+        if self.args.flip_y:
+            ly = self.args.page_height_in * self._pts_per_in - ly
         self.canvas.setFont("Helvetica-Bold", self.args.label_fontsize)
         self.canvas.setFillColor(black)
         offset = text_center_offset("Helvetica-Bold", self.args.label_fontsize)
@@ -153,7 +159,7 @@ class PDFPolygonWriter:
         """Write the polygons and labels to a PDF file."""
         self.canvas = rl_canvas.Canvas(
             self.args.filename,
-            pagesize=(self.args.page_width_in * 72, self.args.page_height_in * 72),
+            pagesize=(self.args.page_width_in * self._pts_per_in, self.args.page_height_in * self._pts_per_in),
         )
         for placements in self.args.pages:
             for placement in placements:

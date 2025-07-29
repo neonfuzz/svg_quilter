@@ -41,6 +41,7 @@ class PipelineConfig:
     margin_in: float
     pdf_file: str
     png_file: str
+    flip_pieces: bool = True
 
 
 @dataclass
@@ -109,6 +110,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=DEFAULT_MARGIN_IN,
         help="Page margin in inches",
+    )
+    parser.add_argument(
+        "--no-flip",
+        dest="no_flip",
+        action="store_true",
+        help="Do not flip pieces in the PDF (show right side)",
     )
     parser.add_argument(
         "-v",
@@ -260,6 +267,7 @@ def export_pdf(state: PipelineState, config: PipelineConfig) -> None:
         page_width_in=config.page_width_in,
         page_height_in=config.page_height_in,
         svg_units_per_in=state.svg_units_per_in,
+        flip_y=config.flip_pieces,
     )
     logger.info("Saving PDF output to %s", config.pdf_file)
     pdf_writer(pdf_writer_args)
@@ -286,6 +294,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
         margin_in=args.margin_in,
         pdf_file=args.pdf_file,
         png_file=args.png_file,
+        flip_pieces=not args.no_flip,
     )
     ensure_output_dirs(config)
     state = PipelineState(svg_file=args.svg_file)

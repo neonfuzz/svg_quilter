@@ -104,3 +104,32 @@ def test_draw_label_with_color(tmp_path):
     poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
     args = LabelDrawArgs(poly_idx=0, rotation=0, dx=0, dy=0, seam_poly=poly)
     writer.draw_label(args)
+
+
+def test_pdfwriterargs_flip_default_true():
+    args = PDFWriterArgs(
+        filename="out.pdf",
+        pages=[],
+        seam_allowances={},
+        polygons=[],
+        groups=[],
+        piece_labels={},
+        label_positions={},
+    )
+    assert args.flip_y is True
+
+
+def test_pdfpolygonwriter_write_no_flip(tmp_path):
+    args = PDFWriterArgs(
+        filename=str(tmp_path / "out.pdf"),
+        pages=[[]],
+        seam_allowances={},
+        polygons=[],
+        groups=[],
+        piece_labels={},
+        label_positions={},
+        flip_y=False,
+    )
+    writer = PDFPolygonWriter(args)
+    writer.write()
+    assert (tmp_path / "out.pdf").is_file()

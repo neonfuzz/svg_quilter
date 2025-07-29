@@ -20,6 +20,7 @@ A Python toolkit for turning SVG line drawings into **Foundation Paper Piecing (
 - **Automatic Colors:** If your svg contains a bitmap image, automatically detects colors and uses them for each piece.
 - **Easy Labeling:** Groups and pieces are automatically labeled and placed.
 - **Automatic Flipping:** Printed pieces are automatically flipped, so you're working with the wrong side of the fabric.
+  Use `--no-flip` if you want the right side instead.
 
 ---
 
@@ -33,6 +34,8 @@ You can use [3groupA.svg](tests/e2e/fixtures/3groupA.svg) to get started.
 ### Run the script
 
 `python main.py tests/e2e/fixtures/3groupA.svg`
+ 
+Add `--no-flip` if you prefer pieces oriented like the SVG.
 
 ### FPP groups and sew order are automatically calculated
 
@@ -47,6 +50,7 @@ You can use [3groupA.svg](tests/e2e/fixtures/3groupA.svg) to get started.
 <p><img alt="Paper pattern pieces with seam allowances are packed on a page" src="images/3groupA_pieces.png" width="300"></p>
 
 Note that the pieces are flipped versions of the layout (i.e, they're the wrong side of the fabric).
+Use the `--no-flip` option to keep the original orientation.
 
 
 ---
@@ -68,6 +72,7 @@ Note that the pieces are flipped versions of the layout (i.e, they're the wrong 
 usage: main.py [-h] [--pdf PDF_FILE] [--png PNG_FILE]
                [--page-width PAGE_WIDTH_IN] [--page-height PAGE_HEIGHT_IN]
                [--seam-allowance SEAM_ALLOWANCE_IN] [--margin MARGIN_IN] [-v]
+               [--no-flip]
                svg_file
 
 FPP SVG to PDF/PNG pattern generator
@@ -86,6 +91,7 @@ options:
   --seam-allowance SEAM_ALLOWANCE_IN
                         Seam allowance in inches (default: 0.25)
   --margin MARGIN_IN    Page margin in inches (default: 0.5)
+  --no-flip             Do not flip pieces in the PDF (show right side)
   -v, --verbose         Enable verbose (INFO level) logging (default: False)
 ```
 

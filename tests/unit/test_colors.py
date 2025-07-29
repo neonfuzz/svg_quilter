@@ -113,3 +113,15 @@ def test_polygon_color_map_multiple_polys():
     assert rgb_map[0] == (100, 100, 0)
     assert rgb_map[1] == (100, 100, 0)
     assert name_map[0] == name_map[1]
+
+def test_closest_color_name_fallback():
+    # Use a color unlikely to match exactly to trigger the fallback path
+    name = closest_color_name((1, 2, 3))
+    assert isinstance(name, str) and len(name) > 0
+
+
+def test_extract_image_from_svg_empty_tree():
+    # ElementTree with no root should raise a ValueError
+    tree = ET.ElementTree()
+    with pytest.raises(ValueError):
+        extract_image_from_svg(tree)

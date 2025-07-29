@@ -1,4 +1,5 @@
-from shapely.geometry import Polygon, MultiPolygon
+import pytest
+from shapely.geometry import Polygon, MultiPolygon, LineString
 from seam_allowance import (
     group_polygons_to_shape,
     clean_and_buffer_group_shape,
@@ -52,3 +53,13 @@ def test_seam_allowance_polygons_basic_grouping_and_buffer():
     # Area of buffered group should be > than unbuffered union area
     assert area_0 > 2.0
     assert area_1 > 1.0
+
+def test_group_polygons_to_shape_raises_on_invalid():
+    with pytest.raises(ValueError):
+        group_polygons_to_shape([], [])
+
+
+def test_clean_and_buffer_group_shape_raises_on_nonpolygon():
+    ls = LineString([(0,0),(1,1)])
+    with pytest.raises(ValueError):
+        clean_and_buffer_group_shape(ls, 0.1)

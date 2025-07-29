@@ -3,6 +3,7 @@ from pdf_writer import (
     text_center_offset,
     transform_group_shapes,
     apply_transform,
+    PDFPolygonWriter,
     PDFWriterArgs,
     LabelDrawArgs,
 )
@@ -70,3 +71,36 @@ def test_labeldrawargs_fields():
     assert args.dx == 1
     assert args.poly_idx == 0
     assert isinstance(args.seam_poly, Polygon)
+
+import io
+from reportlab.pdfgen import canvas as rl_canvas
+
+
+def _make_writer(tmp_path):
+    args = PDFWriterArgs(
+        filename=str(tmp_path / "out.pdf"),
+        pages=[],
+        seam_allowances={},
+        polygons=[],
+        groups=[],
+        piece_labels={0: "A"},
+        label_positions={0: (0, 0)},
+        color_names={0: "red"},
+    )
+    writer = PDFPolygonWriter(args)
+    writer.canvas = rl_canvas.Canvas(io.BytesIO())
+    return writer
+
+
+def test_draw_polygon_no_fill(tmp_path):
+    writer = _make_writer(tmp_path)
+    poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    # By default fill_color is None so else branch is used
+    writer.draw_polygon(poly)
+
+
+def test_draw_label_with_color(tmp_path):
+    writer = _make_writer(tmp_path)
+    poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    args = LabelDrawArgs(poly_idx=0, rotation=0, dx=0, dy=0, seam_poly=poly)
+    writer.draw_label(args)

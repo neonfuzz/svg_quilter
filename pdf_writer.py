@@ -105,17 +105,16 @@ class PDFPolygonWriter:
         self.stroke_color: Any = black
         self.alpha: float = 1.0
         self.linewidth: float = 1.0
-        self._pts_per_in = inch
 
     def draw_polygon(self, poly: Polygon) -> None:
         """Draw a polygon on the instance's canvas using instance drawing attributes."""
         assert self.canvas is not None, "Canvas must be initialized before drawing."
         pts = []
         for x, y in poly.exterior.coords:
-            px = x / self.args.svg_units_per_in * self._pts_per_in
-            py = y / self.args.svg_units_per_in * self._pts_per_in
-            if self.args.flip_y:
-                py = self.args.page_height_in * self._pts_per_in - py
+            px = x / self.args.svg_units_per_in * inch
+            py = y / self.args.svg_units_per_in * inch
+            if not self.args.flip_y:
+                py = self.args.page_height_in * inch - py
             pts.append((px, py))
         path = self.canvas.beginPath()
         path.moveTo(*pts[0])
@@ -137,10 +136,10 @@ class PDFPolygonWriter:
         pt = Point(orig_x, orig_y)
         pt_rot = shapely_rotate(pt, args.rotation, origin=args.seam_poly.centroid)
         pt_tr = shapely_translate(pt_rot, args.dx, args.dy)
-        lx = pt_tr.x / self.args.svg_units_per_in * self._pts_per_in
-        ly = pt_tr.y / self.args.svg_units_per_in * self._pts_per_in
-        if self.args.flip_y:
-            ly = self.args.page_height_in * self._pts_per_in - ly
+        lx = pt_tr.x / self.args.svg_units_per_in * inch
+        ly = pt_tr.y / self.args.svg_units_per_in * inch
+        if not self.args.flip_y:
+            ly = self.args.page_height_in * inch - ly
         self.canvas.setFont("Helvetica-Bold", self.args.label_fontsize)
         self.canvas.setFillColor(black)
         offset = text_center_offset("Helvetica-Bold", self.args.label_fontsize)
@@ -159,7 +158,10 @@ class PDFPolygonWriter:
         """Write the polygons and labels to a PDF file."""
         self.canvas = rl_canvas.Canvas(
             self.args.filename,
-            pagesize=(self.args.page_width_in * self._pts_per_in, self.args.page_height_in * self._pts_per_in),
+            pagesize=(
+                self.args.page_width_in * inch,
+                self.args.page_height_in * inch,
+            ),
         )
         for placements in self.args.pages:
             for placement in placements:

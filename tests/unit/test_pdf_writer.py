@@ -1,13 +1,19 @@
+import io
+
 import pytest
+from reportlab.pdfgen import canvas as rl_canvas
+from shapely.geometry import Polygon
+
+from layout import Placement
 from pdf_writer import (
-    text_center_offset,
-    transform_group_shapes,
-    apply_transform,
+    LabelDrawArgs,
     PDFPolygonWriter,
     PDFWriterArgs,
-    LabelDrawArgs,
+    apply_transform,
+    pdf_writer,
+    text_center_offset,
+    transform_group_shapes,
 )
-from shapely.geometry import Polygon
 
 
 def test_text_center_offset_returns_float():
@@ -72,9 +78,6 @@ def test_labeldrawargs_fields():
     assert args.poly_idx == 0
     assert isinstance(args.seam_poly, Polygon)
 
-import io
-from reportlab.pdfgen import canvas as rl_canvas
-
 
 def _make_writer(tmp_path):
     args = PDFWriterArgs(
@@ -104,3 +107,20 @@ def test_draw_label_with_color(tmp_path):
     poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
     args = LabelDrawArgs(poly_idx=0, rotation=0, dx=0, dy=0, seam_poly=poly)
     writer.draw_label(args)
+
+
+def test_pdf_writer_creates_file(tmp_path):
+    poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    placement = Placement(group_idx=0, rotation=0, dx=0, dy=0, poly=poly)
+    args = PDFWriterArgs(
+        filename=str(tmp_path / "out.pdf"),
+        pages=[[placement]],
+        seam_allowances={0: poly.buffer(0.1)},
+        polygons=[poly],
+        groups=[[0]],
+        piece_labels={0: "A1"},
+        label_positions={0: (0.5, 0.5)},
+        color_names={0: "blue"},
+    )
+    pdf_writer(args)
+    assert (tmp_path / "out.pdf").exists()
